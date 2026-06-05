@@ -787,17 +787,17 @@ where
             if offset.abs() < 1e-6 {
                 continue;
             }
-            // Half-open window [ta, tb) — `gte(t,ta)*lt(t,tb)` is 1 inside,
-            // 0 outside. Using `between` here would double-count at shared
-            // endpoints between adjacent segments because the flat sum can't
-            // short-circuit the way the old nested-if form did.
-            format!("if(gte(t,{ta:.4})*lt(t,{tb:.4}),{offset:.4},0)")
+            // Half-open window [ta, tb) — `between(t,ta,tb)` is 1 inside,
+            // 0 outside.
+            format!("between(t,{ta:.4},{tb:.4})*{offset:.4}")
         } else {
             let dt = tb - ta;
             let dv = vb - va;
             let offset_a = va - default_val;
+            // Linear ramp using lerp-style math:
+            // between(t,ta,tb) * (va + (vb-va)*(t-ta)/(tb-ta) - default)
             format!(
-                "if(gte(t,{ta:.4})*lt(t,{tb:.4}),({offset_a:.4}+{dv:.6}*(t-{ta:.4})/{dt:.4}),0)"
+                "between(t,{ta:.4},{tb:.4})*({offset_a:.4}+{dv:.6}*(t-{ta:.4})/{dt:.4})"
             )
         };
         terms.push(term);

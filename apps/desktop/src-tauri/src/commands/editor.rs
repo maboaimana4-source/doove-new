@@ -1708,6 +1708,25 @@ pub async fn export_video(
     }
 
     let output_path_str = output_path.to_string_lossy().to_string();
+
+    // To avoid "Filename or extension too long" (OS error 206) on Windows and
+    // "Cannot allocate memory" when FFmpeg tries to parse massive filter
+    // strings from the command line, we write the filter_complex to a
+    // temporary file and use `-filter_complex_script`.
+    let mut filter_script_path = None;
+    if let Some(ref filter_complex) = filter_complex_after_cursor {
+        let temp_dir = std::env::temp_dir();
+        let script_path = temp_dir.join(format!("doove_filter_{}.txt", export_id));
+        if let Ok(_) = std::fs::write(&script_path, filter_complex) {
+            // Replace -filter_complex <string> with -filter_complex_script <path>
+            if let Some(pos) = args.iter().position(|arg| arg == "-filter_complex") {
+                args[pos] = "-filter_complex_script".to_string();
+                args[pos + 1] = script_path.to_string_lossy().to_string();
+                filter_script_path = Some(script_path);
+            }
+        }
+    }
+
     log::info!("export ffmpeg args: {}", args.join(" "));
 
     // Spawn FFmpeg in a background thread so the UI stays responsive.
@@ -2291,6 +2310,9 @@ pub async fn export_video(
     drop(cursor_overlay);
     state.export_cancel.lock().remove(&export_id);
     if let Some(p) = palette_temp_path.as_ref() {
+        let _ = std::fs::remove_file(p);
+    }
+    if let Some(p) = filter_script_path {
         let _ = std::fs::remove_file(p);
     }
 
