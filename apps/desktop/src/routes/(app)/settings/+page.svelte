@@ -73,6 +73,8 @@
   let activeTab = $state<SettingsTab>(
     (page.url.searchParams.get("tab") as SettingsTab) || "recording",
   );
+  let licenseKey = $state("");
+  let isVerifying = $state(false);
 
   onMount(() => {
     fetchSettings();
