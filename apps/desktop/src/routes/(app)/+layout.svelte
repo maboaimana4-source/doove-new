@@ -22,7 +22,23 @@
   // On boot: surface the "What's new" corner card once per release (skip if
   // the user already landed on the changelog page), and kick off the
   // background update check. Both render as non-blocking bottom-right cards.
-  onMount(() => {
+  onMount(async () => {
+    // Basic telemetry ping
+    try {
+      let machineId = safeStorage.get("doove-machine-id", "");
+      if (!machineId) {
+        machineId = crypto.randomUUID();
+        safeStorage.set("doove-machine-id", machineId);
+      }
+      const appVersion = await getVersion();
+      const osType = platform();
+      fetch("https://doove.imara.cloud/api/telemetry/ping", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ machine_id: machineId, os: osType, version: appVersion })
+      }).catch(() => {});
+    } catch (e) {}
+
     const unlistenSettings = listen<{ tab: string }>("open-settings", async (event) => {
       // Focus the main window
       const mainWin = await WebviewWindow.getByLabel("main");
