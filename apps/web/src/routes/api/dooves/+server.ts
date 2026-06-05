@@ -1,0 +1,117 @@
+import { error, json } from "@sveltejs/kit";
+import { and, desc, eq, ne } from "drizzle-orm";
+import { getAuth } from "$lib/auth/server";
+import { getDb } from "$lib/db";
+import { doove } from "$lib/db/schema";
+import {
+	dooveLatestShareSlugSql,
+	dooveTagIdsSql,
+	dooveViewsSql,
+} from "$lib/db/doove-selectors";
+import { resolvePlaybackUrl } from "$lib/storage";
+import { assertWorkspaceMember } from "$lib/workspace/guard";
+import type { RequestHandler } from "./$types";
+
+type SessionShape = {
+	user: { id: string; activeOrganizationId?: string | null };
+};
+
+/**
+ * GET /api/dooves
+ *
+ * Lists dooves in the caller's workspace. Resolves the active workspace
+ * from the session (`activeOrganizationId`) and enforces membership.
+ *
+ * Query params:
+ *   - `workspaceId` (optional) — override the session's active org for
+ *     a one-off listing (e.g. the org switcher reads from this before
+ *     committing the switch)
+ *   - `status` (optional) — filter by doove status; default excludes
+ *     `archived` since the dashboard shows them under a separate tab
+ *   - `limit` / `offset` — pagination, defaults 50 / 0
+ *
+ * Includes a denormalized `latestShareSlug` for each doove so the row
+ * can render a "Copy link" button without a second fetch.
+ */
+export const GET: RequestHandler = async ({ request, url }) => {
+	const session = (await getAuth()
+		.api.getSession({ headers: request.headers })
+		.catch(() => null)) as SessionShape | null;
+	if (!session?.user) error(401, "Sign in required");
+
+	const workspaceId =
+		url.searchParams.get("workspaceId") ?? session.user.activeOrganizationId;
+	if (!workspaceId) error(400, "No active workspace");
+
+	const db = getDb();
+
+	await assertWorkspaceMember(session.user.id, workspaceId);
+
+	const statusFilter = url.searchParams.get("status");
+	const limit = Math.min(
+		200,
+		Math.max(1, Number(url.searchParams.get("limit")) || 50),
+	);
+	const offset = Math.max(0, Number(url.searchParams.get("offset")) || 0);
+
+	const where = statusFilter
+		? and(
+				eq(doove.workspaceId, workspaceId),
+				eq(doove.status, statusFilter as "draft" | "published" | "archived"),
+			)
+		: and(
+				eq(doove.workspaceId, workspaceId),
+				// Exclude archived from default list; archived shows on its own tab.
+				ne(doove.status, "archived"),
+			);
+
+	// One trip: doove rows + their most-recent share's slug + aggregated
+	// view count. We materialize the aggregate via a lateral-ish subquery
+	// so a doove with five shares still produces one row.
+	const rows = await db
+		.select({
+			id: doove.id,
+			title: doove.title,
+			durationSec: doove.durationSec,
+			sizeBytes: doove.sizeBytes,
+			width: doove.width,
+			height: doove.height,
+			source: doove.source,
+			provider: doove.provider,
+			status: doove.status,
+			folderId: doove.folderId,
+			videoUrl: doove.videoUrl,
+			posterUrl: doove.posterUrl,
+			createdAt: doove.createdAt,
+			lastViewedAt: doove.lastViewedAt,
+			views: dooveViewsSql(),
+			latestShareSlug: dooveLatestShareSlugSql(),
+			// Tag id array per doove (resolved against the workspace tag list
+			// by the client). `[]` when untagged.
+			tags: dooveTagIdsSql(),
+		})
+		.from(doove)
+		.where(where)
+		.orderBy(desc(doove.createdAt))
+		.limit(limit)
+		.offset(offset);
+
+	return json({
+		ok: true,
+		workspaceId,
+		dooves: await Promise.all(
+			rows.map(async (r) => ({
+				...r,
+				// `videoUrl` is a bare object key — sign it into a playable URL,
+				// matching the page loaders and the share page.
+				videoUrl: await resolvePlaybackUrl(r.videoUrl),
+				// Normalize SQL `bigint`s and `number`s to plain numbers.
+				sizeBytes: Number(r.sizeBytes),
+				views: Number(r.views ?? 0),
+				createdAt: r.createdAt.getTime(),
+				lastViewedAt: r.lastViewedAt ? r.lastViewedAt.getTime() : null,
+				tags: r.tags ?? [],
+			})),
+		),
+	});
+};

@@ -1,0 +1,87 @@
+import { error, json } from "@sveltejs/kit";
+import { eq } from "drizzle-orm";
+import { getAuth } from "$lib/auth/server";
+import { getDb } from "$lib/db";
+import { share } from "$lib/db/schema";
+import { resolveShareManage } from "$lib/share/manage";
+import { assertWorkspaceMember } from "$lib/workspace/guard";
+import type { RequestHandler } from "./$types";
+
+type SessionShape = { user: { id: string; role?: string; activeOrganizationId?: string | null } };
+
+// Scopes settable from the share menu. `workspace` is canonical; `team` is its
+// legacy alias and both are accepted. `selected` is intentionally NOT here:
+// switching to an allowlist needs invitees, which this endpoint can't take —
+// callers create a fresh `selected` link via POST /api/dooves/[id]/share.
+const VALID = new Set(["public", "workspace", "team", "private"] as const);
+type Visibility = "public" | "workspace" | "team" | "private";
+
+/**
+ * PATCH /api/share/[id]/access
+ *
+ * Change a share's visibility. Body: { visibility, organizationId? }.
+ *
+ * Rules:
+ *   - Visibility ∈ {public, workspace|team, private}. `selected` is rejected
+ *     (use the share dialog to pick people on a new link).
+ *   - workspace/team binds the share to a workspace. It defaults to the
+ *     doove's own workspace; an explicit `organizationId` is allowed ONLY if
+ *     the caller is a member of it (or a global admin) — otherwise a share
+ *     owner could expose the doove to a workspace they're not in.
+ *   - Manageable by the share owner, an owner/admin of the doove's workspace,
+ *     or a global admin (see `resolveShareManage`).
+ */
+export const PATCH: RequestHandler = async ({ params, request }) => {
+	const session = (await getAuth()
+		.api.getSession({ headers: request.headers })
+		.catch(() => null)) as SessionShape | null;
+
+	if (!session?.user) error(401, "Sign in required");
+
+	let body: { visibility?: unknown; organizationId?: unknown } = {};
+	try {
+		body = (await request.json()) as typeof body;
+	} catch {
+		error(400, "Invalid JSON body");
+	}
+
+	const visibility = typeof body.visibility === "string" ? body.visibility : "";
+	if (visibility === "selected") {
+		error(400, "To share with specific people, create a new link from the share dialog");
+	}
+	if (!VALID.has(visibility as Visibility)) {
+		error(400, "Invalid visibility value");
+	}
+	// Normalize the legacy `team` alias to canonical `workspace` so new writes
+	// stop persisting the deprecated value (schema: workspace is canonical).
+	const next: Visibility = visibility === "team" ? "workspace" : (visibility as Visibility);
+
+	// Authorize against the share + its doove's workspace in one shared check.
+	const manage = await resolveShareManage(params.id, session.user.id);
+	if (!manage) error(404, "Share not found");
+	if (!manage.canManage) error(403, "Not allowed to change this share");
+
+	let organizationId: string | null = null;
+	if (next === "workspace") {
+		const explicit = typeof body.organizationId === "string" ? body.organizationId : null;
+		// Default to the doove's own workspace — the correct gate, and what
+		// share creation uses. An explicit override must be a workspace the
+		// caller actually belongs to (assertWorkspaceMember lets global admins
+		// through and throws 403 otherwise).
+		organizationId = explicit ?? manage.workspaceId ?? session.user.activeOrganizationId ?? null;
+		if (!organizationId) {
+			error(400, "Team visibility requires a workspace");
+		}
+		if (organizationId !== manage.workspaceId) {
+			await assertWorkspaceMember(session.user.id, organizationId);
+		}
+	}
+
+	const db = getDb();
+	await db
+		.update(share)
+		.set({ visibility: next, organizationId })
+		.where(eq(share.slug, params.id));
+
+	return json({ ok: true, visibility: next, organizationId });
+};

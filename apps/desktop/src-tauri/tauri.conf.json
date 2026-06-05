@@ -1,0 +1,91 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "doove",
+  "version": "0.0.0-0",
+  "identifier": "com.nexonauts.doove",
+  "build": {
+    "frontendDist": "../build",
+    "devUrl": "http://localhost:4421",
+    "beforeDevCommand": "pnpm run ui:dev",
+    "beforeBuildCommand": "pnpm run ui:build"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Doove",
+        "url": "/",
+        "width": 1280,
+        "height": 800,
+        "resizable": true,
+        "fullscreen": false,
+        "maximizable": true,
+        "decorations": false,
+        "transparent": false,
+        "center": true,
+        "shadow": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost https: data: blob:; media-src 'self' asset: http://asset.localhost blob: data:; connect-src 'self' ipc: http://ipc.localhost asset: http://asset.localhost https://*.i.posthog.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval';",
+      "assetProtocol": {
+        "enable": true,
+        "scope": [
+          "**"
+        ]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "app",
+      "msi",
+      "nsis",
+      "appimage",
+      "deb",
+      "dmg"
+    ],
+    "publisher": "Doove",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "externalBin": [
+      "binaries/ffmpeg",
+      "binaries/ffprobe"
+    ],
+     "windows": {
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "http://timestamp.digicert.com"
+    },
+    "macOS": {
+      "minimumSystemVersion": "13.0"
+    },
+    "linux": {
+      "appimage": {}
+    },
+    "createUpdaterArtifacts": true,
+    "fileAssociations": [
+      {
+        "ext": ["doove"],
+        "name": "Doove Project",
+        "description": "A Doove recording project",
+        "role": "Editor",
+        "mimeType": "application/x-doove-project"
+      }
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ2Mzg5MEYxRDMxNTQ3RUIKUldUclJ4WFQ4WkE0MXFhYXNVOVhhdCtRM2FSRjRMMU01YTk1NHNvZS9VUUxCVjRCNDZDcm1Jb1AK",
+      "endpoints": [
+        "https://github.com/kanakkholwal/doove/releases/latest/download/latest.json"
+      ],
+      "dialog": false
+    }
+  }
+}

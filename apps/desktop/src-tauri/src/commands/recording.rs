@@ -1,0 +1,241 @@
+use std::fs;
+use std::path::PathBuf;
+
+use chrono::{Local, TimeZone};
+use tauri::State;
+
+use super::system::get_active_output_dir;
+use super::types::{AppState, RecordingEntry, RecordingStartResult};
+use crate::project::writer::{write_project, ProjectWriteRequest};
+use crate::project::{ProjectMediaMetadata, ProjectMetadata, ProjectVideoMetadata};
+use crate::recording::{CameraPreviewUpdate, CaptureTarget, RecordingOptions, RegionRect};
+use crate::render::graph::RenderState;
+
+fn dooves_dir(state: &State<'_, AppState>) -> PathBuf {
+    let dir = get_active_output_dir(state).join("dooves");
+    let _ = fs::create_dir_all(&dir);
+    dir
+}
+
+fn exports_dir(state: &State<'_, AppState>) -> PathBuf {
+    let dir = get_active_output_dir(state).join("exports");
+    let _ = fs::create_dir_all(&dir);
+    dir
+}
+
+#[tauri::command]
+pub fn start_recording(
+    target_type: String,
+    target_id: u32,
+    region: Option<RegionRect>,
+    options: Option<RecordingOptions>,
+    state: State<'_, AppState>,
+) -> Result<RecordingStartResult, String> {
+    // On Wayland the compositor refuses direct framebuffer access — the
+    // user-supplied target_type/target_id/region are essentially advisory
+    // because the *real* source is whatever the user picks in the
+    // xdg-desktop-portal dialog. We negotiate the portal stream up front
+    // (this blocks while the dialog is on screen), use the portal's
+    // returned dimensions as authoritative, and stash the stream handle
+    // for the capture thread to pick up. See
+    // `capture::platform::linux_wayland` for the full lifecycle.
+    #[cfg(target_os = "linux")]
+    let target = {
+        if std::env::var_os("WAYLAND_DISPLAY").is_some() {
+            let stream = crate::capture::platform::linux_wayland::acquire_portal_stream()
+                .map_err(|e| format!("Wayland portal handshake failed: {e:#}"))?;
+            let kind = if target_type == "window" {
+                crate::recording::CaptureKind::Window
+            } else if target_type == "region" {
+                crate::recording::CaptureKind::Region
+            } else {
+                crate::recording::CaptureKind::Display
+            };
+            let area = crate::recording::CaptureArea {
+                x: 0,
+                y: 0,
+                width: stream.width,
+                height: stream.height,
+            };
+            let target = CaptureTarget {
+                kind,
+                id: target_id,
+                display_id: target_id,
+                label: "Wayland portal".to_string(),
+                source: area,
+                crop: area,
+                // The portal already hands us physical pixels, so no rescale.
+                scale_factor: 1.0,
+            };
+            crate::capture::platform::linux_wayland::stash_portal_stream(stream);
+            target
+        } else if target_type == "region" {
+            let rect = region.ok_or_else(|| "region target requires a rect".to_string())?;
+            CaptureTarget::resolve_region(rect).map_err(|e| e.to_string())?
+        } else {
+            CaptureTarget::resolve(&target_type, target_id).map_err(|e| e.to_string())?
+        }
+    };
+    #[cfg(not(target_os = "linux"))]
+    let target = if target_type == "region" {
+        let rect = region.ok_or_else(|| "region target requires a rect".to_string())?;
+        CaptureTarget::resolve_region(rect).map_err(|e| e.to_string())?
+    } else {
+        CaptureTarget::resolve(&target_type, target_id).map_err(|e| e.to_string())?
+    };
+    let output_dir = get_active_output_dir(&state);
+    let warnings = state
+        .recording_manager
+        .start(target, output_dir, options.unwrap_or_default())
+        .inspect_err(|e| log::error!("start_recording failed: {e:#}"))
+        .map_err(|e| format!("{e:#}"))?;
+    Ok(RecordingStartResult { warnings })
+}
+
+#[tauri::command]
+pub fn stop_recording(state: State<'_, AppState>) -> Result<String, String> {
+    // `{:#}` formats the full anyhow chain (top message + every `.context()`
+    // below it), so the JS-side alert sees the real cause instead of just
+    // the outermost label. Without this, errors like "encoder thread
+    // panicked" hid the underlying FFmpeg-process exit code.
+    let artifacts = state
+        .recording_manager
+        .stop()
+        .inspect_err(|e| log::error!("stop_recording failed: {e:#}"))
+        .map_err(|e| format!("{e:#}"))?;
+    let dest = dooves_dir(&state);
+    // Human-readable, sortable, searchable name (local time of capture) —
+    // e.g. `Doove_2026-05-16_14-30-22.doove`.
+    let stamp = Local
+        .timestamp_millis_opt(artifacts.started_at_unix_ms as i64)
+        .single()
+        .unwrap_or_else(Local::now)
+        .format("%Y-%m-%d_%H-%M-%S");
+    let final_path = super::unique_path(&dest, &format!("Doove_{stamp}"), "doove");
+    // The recording pipeline is the authoritative source for these values
+    // (crop dimensions from `CaptureTarget`, FPS pinned by the pacer at 60).
+    // Spawning ffprobe here just to confirm what we already know was
+    // adding 100–300ms to every stop, right when the UI wants to transition.
+    let metadata = ProjectMetadata {
+        schema_version: 1,
+        created_at_unix_ms: artifacts.started_at_unix_ms,
+        capture_target: artifacts.capture_target.clone(),
+        stats: artifacts.stats.clone(),
+        video: ProjectVideoMetadata {
+            width: artifacts.capture_target.crop.width,
+            height: artifacts.capture_target.crop.height,
+            fps: crate::recording::RECORDING_FPS,
+            duration_ms: artifacts.stats.duration_ms,
+        },
+        media: Some(ProjectMediaMetadata {
+            has_system_audio: true,
+            has_microphone: artifacts.microphone_path.is_some(),
+            has_camera: artifacts.camera_path.is_some(),
+        }),
+    };
+    let default_render_state = RenderState {
+        trim_end: artifacts.stats.duration_ms as f64 / 1000.0,
+        camera_overlay: artifacts.camera_overlay.clone(),
+        ..RenderState::default()
+    };
+    let project_path = write_project(ProjectWriteRequest {
+        output_path: final_path.clone(),
+        metadata,
+        recording_path: artifacts.recording_path.clone(),
+        cursor_path: artifacts.cursor_path.clone(),
+        audio_path: artifacts.audio_path.clone(),
+        microphone_path: artifacts.microphone_path.clone(),
+        camera_path: artifacts.camera_path.clone(),
+        edits_json: serde_json::to_string_pretty(&default_render_state)
+            .unwrap_or_else(|_| "{}".into()),
+    })
+    .inspect_err(|e| log::error!("write_project failed: {e:#}"))
+    .map_err(|e| format!("{e:#}"))?;
+
+    // Clean up temporary session files.
+    let _ = fs::remove_file(&artifacts.recording_path);
+    let _ = fs::remove_file(&artifacts.cursor_path);
+    let _ = fs::remove_file(&artifacts.audio_path);
+    if let Some(ref mic_path) = artifacts.microphone_path {
+        let _ = fs::remove_file(mic_path);
+    }
+    if let Some(ref cam_path) = artifacts.camera_path {
+        let _ = fs::remove_file(cam_path);
+    }
+
+    *state.last_file_path.lock() = Some(project_path.to_string_lossy().to_string());
+    Ok(project_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub fn pause_recording(state: State<'_, AppState>) -> Result<(), String> {
+    state.recording_manager.pause().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn resume_recording(state: State<'_, AppState>) -> Result<(), String> {
+    state.recording_manager.resume().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn is_recording_paused(state: State<'_, AppState>) -> Result<bool, String> {
+    Ok(state.recording_manager.is_paused())
+}
+
+#[tauri::command]
+pub fn update_camera_preview_state(
+    state: CameraPreviewUpdate,
+    app_state: State<'_, AppState>,
+) -> Result<(), String> {
+    app_state
+        .recording_manager
+        .update_camera_preview_state(state)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn list_dooves(state: State<'_, AppState>) -> Result<Vec<RecordingEntry>, String> {
+    list_files_by_ext(&dooves_dir(&state), &["doove"])
+}
+
+#[tauri::command]
+pub fn list_exports(state: State<'_, AppState>) -> Result<Vec<RecordingEntry>, String> {
+    list_files_by_ext(&exports_dir(&state), &["mp4", "webm", "gif"])
+}
+
+/// One pass over `dir`, collecting any file whose extension is in `exts`.
+/// Sorts newest-first by mtime.
+fn list_files_by_ext(dir: &PathBuf, exts: &[&str]) -> Result<Vec<RecordingEntry>, String> {
+    let mut entries = Vec::new();
+    let read = match fs::read_dir(dir) {
+        Ok(r) => r,
+        Err(_) => return Ok(entries),
+    };
+
+    for entry in read.flatten() {
+        let path = entry.path();
+        let file_ext = path
+            .extension()
+            .and_then(|v| v.to_str())
+            .unwrap_or_default();
+        if !exts.contains(&file_ext) {
+            continue;
+        }
+        if let Ok(meta) = entry.metadata() {
+            let created = meta
+                .modified()
+                .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
+                .duration_since(std::time::SystemTime::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            entries.push(RecordingEntry {
+                filename: entry.file_name().to_string_lossy().to_string(),
+                path: path.to_string_lossy().to_string(),
+                size_bytes: meta.len(),
+                created,
+            });
+        }
+    }
+    entries.sort_by(|a, b| b.created.cmp(&a.created));
+    Ok(entries)
+}

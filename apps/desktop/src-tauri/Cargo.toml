@@ -1,0 +1,168 @@
+[package]
+name = "doove"
+version = "0.0.0-0"
+description = "A light weight app to record your screen."
+authors = ["kanak kholwal"]
+license = ""
+repository = "https://github.com/kanakkholwal/doove"
+edition = "2021"
+rust-version = "1.77.2"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "doove_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.5.6", features = [] }
+
+[dependencies]
+anyhow = "1.0"
+crossbeam-queue = "0.3"
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+parking_lot = "0.12"
+tauri = { version = "2.10.3", features = ["protocol-asset", "tray-icon", "image-png"] }
+tauri-plugin-log = "2"
+xcap = "0.8.3"
+tokio = { version = "1.50.0", features = ["full"] }
+image = "0.25"
+rayon = "1"
+base64 = "0.22"
+tauri-plugin-dialog = "~2"
+zip = { version = "2.2.0", default-features = false, features = ["deflate"] }
+tauri-plugin-os = "2.3.2"
+trash = "5.2"
+tauri-plugin-opener = "2"
+# Native OS share sheet (Windows DataTransferManager, macOS
+# NSSharingServicePicker, mobile share panes). Replaces the
+# `navigator.share` path — WebView2's Web Share API rejects video/* file
+# payloads via `canShare`, which made the web approach useless for
+# sharing recordings.
+tauri-plugin-sharekit = "0.3"
+reqwest = { version = "0.12", default-features = false, features = ["stream", "rustls-tls", "json"] }
+sha2 = "0.10"
+futures-util = "0.3"
+hex = "0.4"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+# OS-native secrets storage for the cloud session token. On Windows this is
+# DPAPI (Credential Manager), on macOS the Keychain, on Linux SecretService
+# (libsecret/gnome-keyring/kwallet). Using `apple-native` + `windows-native`
+# keeps us off the older platform-specific crates this maps to internally.
+# `sync-secret-service` is the default Linux backend — fine for our token
+# size; SecretService is async-only behind a feature flag we don't enable.
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "vendored"] }
+# Used to label the cloud session row's User-Agent so the user can identify
+# their devices in the future Settings → Devices list. Better Auth captures
+# this header into session.userAgent automatically.
+hostname = "0.4"
+# Loads `apps/desktop/.env` so `CLOUD_API_URL=http://localhost:4420` (and
+# any future override) is visible to `std::env::var` from the Rust side.
+# Tauri doesn't propagate Vite's .env loading into the Rust process, so
+# without this the auth code always falls back to the production URL.
+dotenvy = "0.15"
+# URL-encode OAuth query params (client_id, redirect_uri, code_challenge, …).
+# Hand-rolled encoding is a foot-gun — RFC 3986 reserved chars in PKCE
+# verifiers / state tokens have caused real-world OAuth failures.
+urlencoding = "2"
+# Cryptographic-quality randomness for PKCE code verifier + state token.
+# The `getrandom` backend on each OS feeds /dev/urandom or BCryptGenRandom.
+rand = "0.8"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.58.0", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Direct3D",
+    "Win32_Graphics_Direct3D11",
+    "Win32_Graphics_Gdi",
+    "Win32_Graphics_Dxgi",
+    "Win32_Graphics_Dxgi_Common",
+    "Win32_Devices_FunctionDiscovery",
+    "Win32_Media_Audio",
+    "Win32_System_Com",
+    "Win32_System_Com_StructuredStorage",
+    "Win32_UI_Shell",
+    "Win32_UI_Shell_PropertiesSystem",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+# Native Wayland screen-capture stack. The portal (`ashpd`) negotiates
+# permission and hands us a PipeWire node ID + file descriptor; `pipewire`
+# attaches to that node and pulls BGRA frames. Both are Linux-only crates
+# with C system-library dependencies (`libpipewire-0.3-dev`,
+# `libdbus-1-dev`) — the build host needs those packages installed.
+#
+# `default-features = false` for ashpd so we don't pull in the gtk3/gtk4
+# integration crates we don't need; we just want the raw portal client.
+# The `tokio` feature picks the tokio runtime to match Tauri's own.
+[target.'cfg(target_os = "linux")'.dependencies]
+ashpd = { version = "0.10", default-features = false, features = ["tokio"] }
+# Must match the major version `xcap` pulls in transitively (it uses
+# pipewire for Wayland source enumeration). Two different major versions
+# both `links = "pipewire-0.3"` → cargo-resolution failure. Keep this
+# pinned to the same major as xcap or bump them together.
+pipewire = "0.9"
+# Pure-Rust X11 client. xcap also depends on x11rb so the version line
+# is shared — keeping these in lockstep avoids resolution churn. The
+# `shm` feature lets us upgrade to XShm later for the perf win without
+# touching Cargo.toml again; we only use plain `GetImage` for MVP.
+x11rb = { version = "0.13", features = ["shm"] }
+# Direct handle to the WebKitGTK view behind each Tauri window. Needed to
+# flip `enable-media-stream` ON — WebKitGTK ships it OFF (unlike WKWebView /
+# WebView2), so `navigator.mediaDevices` is `undefined` and the camera
+# preview can't enumerate or open — and to auto-grant the getUserMedia
+# `permission-request` (deny-by-default otherwise). Version MUST match the
+# one wry resolves (see Cargo.lock) so the type returned by
+# `PlatformWebview::inner()` unifies with this crate's `WebView`.
+webkit2gtk = "2.0"
+
+# Cross-platform pointer + button sampling for the cursor-capture thread.
+# `device_query` wraps CoreGraphics on macOS and xcb on Linux behind one
+# API, sparing us two separate `unsafe` FFI implementations. On Wayland
+# sessions it falls back through XWayland (present on every mainstream
+# distro). True Wayland-native pointer tracking would need libei and is
+# out of scope — see the cross-platform plan, Phase 2 caveats.
+[target.'cfg(any(target_os = "macos", target_os = "linux"))'.dependencies]
+device_query = "2.1"
+
+# macOS-only: native ScreenCaptureKit bindings for system-audio loopback
+# (and later screen capture). Eliminates the BlackHole virtual-driver
+# requirement that the FFmpeg fallback chain depends on.
+#
+# **Opt-in feature `sckit-loopback`.** The `screencapturekit` 6.x crate
+# transitively pulls `apple-metal`, whose Swift bridge references macOS
+# 10.15 SDK symbols (`MTLSamplerReductionMode`) and macOS 14.4 SDK symbols
+# (`reactiveTextureUsage`) unconditionally — neither is available on the
+# GH Actions `macos-latest` runner's Xcode. Pinning `apple-metal` to
+# older versions doesn't help; the macOS 14.4 references go back to 0.6.x.
+# This is an upstream packaging bug in `apple-metal` (should be `#if
+# canImport(...)` compile-time gates, not runtime `#available` checks).
+#
+# Until upstream is fixed (or the runner gets a newer SDK), the dep is
+# gated behind the `sckit-loopback` feature so default builds stay green.
+# Builds with `--features sckit-loopback` against a Mac that has the
+# required SDK locally will exercise the native SCKit path; everyone else
+# falls through to the existing BlackHole / silence chain in
+# `audio/platform/ffmpeg_unix.rs`.
+[target.'cfg(target_os = "macos")'.dependencies]
+screencapturekit = { version = "6.0", default-features = false, features = ["macos_13_0"], optional = true }
+
+[features]
+default = []
+# Enables the native ScreenCaptureKit audio loopback path on macOS.
+# See `audio/platform/macos_sckit.rs` for the runtime smoke-test
+# checklist before flipping this on for a release build.
+sckit-loopback = ["dep:screencapturekit"]
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+# Without single-instance, launching Doove a second time (taskbar shortcut,
+# protocol handler, or tray "Show" while a hidden instance is still alive)
+# spawns a duplicate process that owns its own recording manager and tray
+# icon. The plugin gives us a callback to focus + show the existing main
+# window instead.
+tauri-plugin-single-instance = "2"

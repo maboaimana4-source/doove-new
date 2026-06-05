@@ -1,0 +1,414 @@
+/**
+ * DoovePlayer theme — restyles media-chrome from the ground up to match
+ * the shadcn/Tailwind vocabulary used across the rest of the Doove
+ * surface. We don't just tint colors; we override sizes, border radii,
+ * hover behaviour, tooltip styling, fonts, and scrubber geometry so the
+ * player reads as "part of the app", not "a video widget bolted on".
+ *
+ * Everything keys off design-system tokens where it makes sense; chrome
+ * surfaces stay dark + glassy regardless of host theme since the player
+ * always sits over black video frames.
+ */
+
+/* ──────────────────────────────────────────────────────────────────
+   1. Font + selection — applied to the controller AND every
+   descendant (custom-element shadow roots included via media-chrome's
+   `--media-font-family` variable, which the library does pipe through).
+   ────────────────────────────────────────────────────────────────── */
+
+.doove-player,
+.doove-player * {
+	font-family: "Geist Variable", "Inter", ui-sans-serif, system-ui,
+		-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	-webkit-user-select: none;
+	user-select: none;
+}
+
+/* media-chrome tooltips, time displays, and menu items live in shadow
+   DOM that doesn't always inherit from the host — push the font via the
+   library's own CSS variables so it lands inside the shadow roots. */
+.doove-player {
+	--media-font-family: "Geist Variable", "Inter", ui-sans-serif, system-ui,
+		-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	--media-tooltip-font-family: "Geist Variable", "Inter", ui-sans-serif,
+		system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	--media-font-weight: 500;
+	--media-tooltip-font-weight: 500;
+	--media-text-font-weight: 500;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   2. Brand + chrome tokens
+   ────────────────────────────────────────────────────────────────── */
+
+.doove-player {
+	--media-primary-color: var(--primary, #cdec3a);
+	--media-secondary-color: rgba(255, 255, 255, 0.92);
+	--media-icon-color: rgba(255, 255, 255, 0.92);
+
+	/* Default control background — transparent. Hover affordances are
+	   applied per-button below via `.doove-btn:hover`, so ranges + time
+	   displays never pick up a white-overlay rectangle on hover. */
+	--media-control-background: transparent;
+	--media-control-hover-background: transparent;
+	--media-menu-background: var(--popover, #1f1f1f);
+	--media-menu-color: var(--popover-foreground, #f5f5f5);
+
+	--media-control-padding: 0;
+	--media-control-height: 40px;
+	--media-button-icon-height: 18px;
+	--media-button-icon-width: 18px;
+	--media-button-padding: 0;
+	--media-focus-ring-color: var(--primary, #cdec3a);
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   3. Scrubber + volume range — primary thumb, soft rail
+   ────────────────────────────────────────────────────────────────── */
+
+.doove-player {
+	--media-range-track-background: rgba(255, 255, 255, 0.18);
+	--media-range-track-pointer-background: rgba(255, 255, 255, 0.32);
+	--media-range-track-translucent-background: rgba(255, 255, 255, 0.28);
+	--media-range-bar-color: var(--primary, #cdec3a);
+	--media-range-track-height: 4px;
+	--media-range-track-border-radius: 9999px;
+	--media-range-thumb-background: var(--primary, #cdec3a);
+	--media-range-thumb-width: 14px;
+	--media-range-thumb-height: 14px;
+	--media-range-thumb-border-radius: 9999px;
+	--media-range-thumb-border: 0;
+	--media-range-thumb-box-shadow:
+		0 0 0 4px rgba(205, 236, 58, 0.18),
+		0 1px 3px rgba(0, 0, 0, 0.4);
+	--media-range-thumb-opacity: 1;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   4. Tooltip + preview thumb — popover styling
+   ────────────────────────────────────────────────────────────────── */
+
+.doove-player {
+	--media-tooltip-background: var(--foreground, #111111);
+	--media-tooltip-padding: 6px 12px;
+	--media-tooltip-border-radius: 6px;
+	--media-tooltip-font-size: 12px;
+	--media-tooltip-arrow-color: var(--foreground, #111111);
+	--media-tooltip-border: none;
+	--media-tooltip-filter: none;
+
+	--media-preview-thumbnail-border: 1px solid color-mix(in srgb, var(--border, #d9d9d9) 85%, transparent);
+	--media-preview-thumbnail-border-radius: 8px;
+	--media-preview-thumbnail-background: var(--popover, #ffffff);
+	--media-preview-thumbnail-box-shadow:
+		0 12px 24px -4px rgba(0, 0, 0, 0.18),
+		0 4px 8px -4px rgba(0, 0, 0, 0.14);
+
+	--media-preview-time-background: var(--foreground, #111111);
+	--media-preview-time-color: var(--background, #ffffff);
+	--media-preview-time-padding: 6px 12px;
+	--media-preview-time-border-radius: 6px;
+	--media-preview-time-margin: 6px 0 0;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   5. Time display + small text
+   ────────────────────────────────────────────────────────────────── */
+
+.doove-player {
+	--media-text-color: rgba(255, 255, 255, 0.78);
+	--media-font-size: 12px;
+
+	/* Loading indicator uses the brand accent. */
+	--media-loading-indicator-icon-color: var(--primary, #cdec3a);
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   6. Bottom chrome gradient fade — readability over any frame
+   ────────────────────────────────────────────────────────────────── */
+
+.doove-control-bar {
+	background: linear-gradient(
+		to top,
+		rgba(0, 0, 0, 0.82),
+		rgba(0, 0, 0, 0.38),
+		rgba(0, 0, 0, 0)
+	);
+	padding: 10px 12px 8px;
+	gap: 4px;
+	align-items: center;
+}
+
+media-controller.doove-player.doove-player-theater {
+	border-radius: 0;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   7. Bottom-bar buttons — shadcn ghost vocabulary
+   ────────────────────────────────────────────────────────────────── */
+
+.doove-btn {
+	height: 36px;
+	min-width: 36px;
+	border-radius: 999px;
+	transition: background-color 150ms ease, color 150ms ease;
+	color: rgba(255, 255, 255, 0.92);
+}
+
+.doove-btn:hover {
+	background: rgba(255, 255, 255, 0.14) !important;
+}
+
+.doove-btn:focus-visible {
+	outline: 2px solid var(--primary, #cdec3a);
+	outline-offset: 1px;
+}
+
+.doove-player:focus-visible {
+	outline: 2px solid var(--primary, #cdec3a);
+	outline-offset: 2px;
+}
+
+/* Text-only buttons (playback rate). Tighter padding, mono digit width
+   so 1× → 1.25× → 1.5× doesn't jitter the bar. */
+.doove-btn-text {
+	padding: 0 10px;
+	font-family: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo,
+		Consolas, monospace !important;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	font-variant-numeric: tabular-nums;
+}
+
+.doove-icon {
+	display: grid;
+	place-items: center;
+	width: 100%;
+	height: 100%;
+}
+
+.doove-icon-muted :global(svg) {
+	opacity: 0.55;
+}
+
+.doove-player :is(
+	media-play-button,
+	media-seek-backward-button,
+	media-seek-forward-button,
+	media-mute-button,
+	media-playback-rate-button,
+	media-captions-button,
+	media-pip-button,
+	media-fullscreen-button
+)::part(tooltip) {
+	background: var(--foreground, #111111);
+	color: var(--background, #ffffff);
+	padding: 6px 12px;
+	border-radius: 6px;
+	border: none;
+	box-shadow: var(--shadow-craft-sm);
+	filter: none;
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 1.2;
+	letter-spacing: 0;
+}
+
+.doove-player :is(
+	media-play-button,
+	media-seek-backward-button,
+	media-seek-forward-button,
+	media-mute-button,
+	media-playback-rate-button,
+	media-captions-button,
+	media-pip-button,
+	media-fullscreen-button
+) {
+	--media-tooltip-arrow-color: var(--foreground, #111111);
+	--media-tooltip-arrow-width: 10px;
+	--media-tooltip-arrow-height: 6px;
+	--media-tooltip-filter: none;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   8. Range elements — explicitly opt OUT of the button hover overlay
+   ────────────────────────────────────────────────────────────────── */
+
+.doove-scrubber,
+.doove-volume {
+	background: transparent !important;
+}
+
+.doove-scrubber:hover,
+.doove-volume:hover {
+	background: transparent !important;
+}
+
+/* The mute button sits next to volume; volume range expands a bit on
+   hover for easier scrubbing without snapping shut. */
+.doove-volume {
+	width: 72px;
+	height: 36px;
+	transition: width 180ms ease;
+}
+
+.doove-volume:hover,
+.doove-volume:focus-within {
+	width: 88px;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   9. Big center play overlay — absolutely centered, auto-hides during
+   playback. `mediapaused` is a media-chrome attribute toggled on the
+   controller; when it's gone we know playback is live and we fade the
+   button out instead of leaving it floating over the frame.
+   ────────────────────────────────────────────────────────────────── */
+
+.doove-big-play {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 68px;
+	height: 68px;
+	border-radius: 9999px;
+	background: rgba(15, 15, 14, 0.74);
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	transition:
+		background-color 180ms ease,
+		opacity 180ms ease,
+		transform 180ms ease;
+	z-index: 2;
+	pointer-events: auto;
+}
+
+.doove-big-play:hover {
+	background: rgba(205, 236, 58, 0.92);
+}
+
+.doove-big-play:hover .doove-icon-big {
+	color: rgba(15, 15, 14, 0.95);
+}
+
+.doove-icon-big {
+	display: grid;
+	place-items: center;
+	width: 100%;
+	height: 100%;
+	color: rgba(255, 255, 255, 0.95);
+}
+
+/* Hide while playing — media-chrome strips `mediapaused` from the
+   controller as soon as the video starts. */
+media-controller.doove-player:not([mediapaused]) .doove-big-play {
+	opacity: 0;
+	transform: translate(-50%, -50%) scale(0.92);
+	pointer-events: none;
+}
+
+/* Loading indicator centered. Default media-chrome positions it via
+   slot but we removed the slot reliance — set position here. */
+.doove-loading {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 1;
+	pointer-events: none;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   10. Scrubber sizing + time display alignment
+   ────────────────────────────────────────────────────────────────── */
+
+.doove-scrubber {
+	flex: 1;
+	min-width: 60px;
+	margin: 0 8px;
+	height: 36px;
+}
+
+.doove-scrubber-wrap {
+	position: relative;
+	display: flex;
+	flex: 1;
+	align-items: center;
+}
+
+.doove-marker-rail {
+	position: absolute;
+	inset: 50% 8px auto 8px;
+	height: 14px;
+	transform: translateY(-50%);
+	pointer-events: none;
+}
+
+.doove-marker {
+	position: absolute;
+	top: 50%;
+	width: 8px;
+	height: 8px;
+	padding: 0;
+	border: 0;
+	border-radius: 999px;
+	background: var(--doove-marker-color, #cdec3a);
+	box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.45);
+	transform: translate(-50%, -50%);
+	pointer-events: auto;
+}
+
+.doove-time {
+	font-family: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo,
+		Consolas, monospace;
+	font-size: 11px;
+	font-weight: 500;
+	letter-spacing: -0.01em;
+	color: rgba(255, 255, 255, 0.78);
+	font-variant-numeric: tabular-nums;
+	padding: 0 8px;
+	height: 36px;
+	display: inline-flex;
+	align-items: center;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   11. Preview chip sizing
+   ────────────────────────────────────────────────────────────────── */
+
+.doove-thumb {
+	width: 160px;
+	height: 90px;
+}
+
+.doove-preview-time {
+	--media-text-color: var(--background, #ffffff);
+	--media-font-size: 12px;
+	--media-font-weight: 500;
+	--media-text-content-height: 1.2;
+	margin-top: 6px;
+	font-size: 12px;
+	font-weight: 500;
+	letter-spacing: 0;
+	box-shadow: var(--shadow-craft-sm);
+}
+
+@media (max-width: 640px) {
+	.doove-control-bar {
+		padding-inline: 8px;
+	}
+
+	.doove-volume {
+		display: none;
+	}
+
+	.doove-big-play {
+		width: 56px;
+		height: 56px;
+	}
+
+	.doove-marker-rail {
+		inset-inline: 6px;
+	}
+}

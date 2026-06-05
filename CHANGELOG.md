@@ -1,0 +1,315 @@
+# Changelog
+
+All notable changes to Doove are documented in this file.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+This file is the **canonical source for both** the GitHub release notes and
+the in-app "What's new" panel:
+
+- **Releases** — `Release Desktop App` workflow runs
+  `scripts/extract-changelog.mjs <tag>` and uses the matching
+  `## [<version>]` section as the release body.
+- **Desktop in-app** —
+  [`apps/desktop/src/constants/changelog.ts`](apps/desktop/src/constants/changelog.ts)
+  is **regenerated** from this file by `pnpm sync:changelog` (and
+  automatically before each `pnpm dev` / `pnpm build` of the desktop app).
+  Don't edit the `RELEASES` array directly — it lives between
+  `RELEASES:START` / `RELEASES:END` markers and will be overwritten.
+- **Web** — `apps/web/src/routes/changelog/+page.ts` reads from the
+  GitHub Releases REST API at runtime, which means the same curated section
+  surfaces there too as soon as the release publishes.
+
+Headings must follow the literal form `## [<version>] — <date>` (em-dash) so
+both the extractor and the desktop sync can find them. Subsections use
+`### Added`, `### Changed`, `### Fixed`, `### Deprecated`. An optional
+`### Highlights` block above those is rendered as the "punchy" bullet row in
+the desktop dialog.
+
+## Authoring entries
+
+Add a changeset per PR instead of editing this file by hand for in-flight
+work:
+
+```sh
+pnpm changeset
+```
+
+See [`.changeset/README.md`](.changeset/README.md) for the full flow.
+`pnpm release:prepare <version>` consumes pending changesets and the current
+`[Unreleased]` block into a new dated section.
+
+## [Unreleased]
+
+### Highlights
+- **macOS is now in public beta** — downloadable from the website and GitHub Releases, and installable in one line with Homebrew.
+
+### Added
+- Homebrew install for macOS through a custom tap. `brew install --cask kanakkholwal/doove/doove` fetches the right build for your chip (Apple Silicon or Intel), and Homebrew strips the Gatekeeper quarantine automatically — so the `xattr` "is damaged" workaround isn't needed on this path. Tap once with `brew tap kanakkholwal/doove` to install and upgrade by the short `doove` name. (The publishing workflow landed earlier; this is the install path going live for the macOS beta.)
+
+### Changed
+- Download page and GitHub release notes now lead the macOS section with the Homebrew one-liner alongside the direct `.dmg` downloads, and label macOS as beta so the expectation is set up-front.
+
+## [0.2.0] — 2026-05-30
+
+### Highlights
+- A single **morphing export dialog** that flows Options → Encoding → Success / Cancelled / Error without ever closing — width and height ease between phases, content cross-fades on top.
+- **Sliding tab indicator** behind every `Tabs.List` (Settings, properties panel, source select) — the active pill slides between tabs instead of snapping.
+- Export Options redesigned end-to-end against `DESIGN.md`: GIF extras open as a smooth side panel on wide screens, fall back to an inline accordion on narrow ones, and the dialog auto-morphs its width as you switch formats.
+
+### Added
+- `ExportFlowDialog` wrapper component that owns the dialog chrome (portal, backdrop, scale-in, focus + Esc routing) and auto-morphs its width and height to whatever the active phase declares via a `ResizeObserver`. A custom out-transition absolute-positions the leaving phase so its fade-out can't drag the wrapper size around — the new phase mounts in normal flow, the wrapper Tweens to match, the old phase fades on top.
+- Per-phase Esc and backdrop routing: Esc cancels a running export, dismisses a finished one, or closes the options picker; the backdrop never cancels an in-flight encode (too easy to misclick mid-render).
+- Share button on the export success card (when `navigator.share` is available), with sensible fallback messaging when the platform doesn't support sharing files but a Drive link is on hand.
+- Sliding active-tab indicator inside `Tabs.List` (shared `@doove/ui` component). Driven by a Svelte 5 `Tween` plus a `MutationObserver` watching `data-state` changes, so it stays decoupled from `bits-ui` internals. Variant-aware visual — `soft` uses `bg-card + shadow-craft-inset`, `default` uses `bg-background + shadow-sm`, `line` slides a 2 px `bg-foreground` bar. Works in both horizontal and vertical orientations and snaps on first measure so it doesn't grow from `(0,0)`.
+
+### Changed
+- Export UI consolidated into one surface across three previously-separate states (options dialog, inline progress overlay, inline result overlay) — eliminates the close/reopen flash between picking a format and seeing encode progress, and again between encode finishing and the success card.
+- Export Options dialog redesigned against `DESIGN.md` dialog rhythm: header `px-5 py-4` with title + description, section dividers softened to `border-border/40`, footer `bg-muted/30 py-2.5`, stat strip inlined with a single divider instead of nested glass cards, section labels paired with a one-line description per the design vocabulary. Buttons use the canonical glass surface (`bg-card/40 + border-border/40`) with `bg-primary/8 + ring-primary/25` for selection.
+- GIF extras (frame rate, color richness, gradients, loop) now reveal as a side panel on wide screens — the dialog grows from 440 px to 760 px through the flow dialog's morph rather than animating an internal collapse — and stack as an inline accordion when the viewport is narrower than 720 px.
+- Export Options dialog is now responsive: container clamps to `min(820px, calc(100vw - 2rem))` and the body picks its own natural width that the wrapper auto-morphs to.
+- `EditorToolbar` no longer mounts its own `ExportDialog`; the toolbar's Export button now bubbles a single `onexport` callback up to the editor page, which owns the flow phase.
+- Progress, Success, Cancelled, and Error views adopted the same chrome and spacing rhythm as the Options view — `size-10 rounded-xl` status icon badges, consistent footer padding, primary actions on the right.
+
+### Fixed
+- No more visual "snap" when switching the export format between MP4/WebM and GIF — the GIF settings panel mounts inline and the wrapper morphs to the new natural size in one motion.
+- Focus is re-routed back into the dialog on every phase change, so screen readers re-announce and keyboard navigation stays inside the modal as content swaps under the user.
+
+## [0.1.10] — 2026-05-28
+
+### Highlights
+- **Google Drive uploads** straight from the export success card, with per-upload progress, history, and cancel/retry — the first "send it somewhere" target after local files.
+- **Account and authentication** across desktop and web: device-authorization OAuth flow on the app, magic-link + password sign-in on the web, plus a templated transactional-email system behind both.
+- **Hardware-accelerated exports** on NVIDIA / AMD / Intel where available, with startup probing so the app picks the right encoder once and remembers — and multi-threaded VP9 + camera pause-trim on the recording path.
+- **macOS feature parity work**: native `ScreenCaptureKit` audio loopback, cross-platform cursor sampling, and the macOS / Linux audio + camera platform modules wired through the recorder.
+- **Tabbed Settings** layout (General / Local / Cloud) and a **frame snapshot → clipboard** action in the editor.
+
+### Added
+- Google Drive integration: connect from Settings → Cloud, upload exports from the success card, watch live upload progress with a per-upload progress bar, cancel in flight, retry failures, copy or open the Drive link once it's done, and review a per-file upload history that survives dismissals.
+- OAuth 2.0 Device Authorization Grant flow for the desktop app, with the matching UI components (device code display, polling state, success card), so the app can sign in without ever embedding a browser window.
+- Magic-link sign-in and password-reset on the web, backed by Better Auth + Drizzle, with templated transactional emails (layout + transport abstraction so future templates plug in cleanly).
+- Cross-window panel error routing through sonner toasts — Rust-side errors from the recording panel now surface as proper toasts in the main window instead of vanishing into the panel's own console.
+- Admin surface for the web: user management, waitlist approvals, teams management, and impersonation with transaction-safe team creation / switching.
+- `NavProgress` component for a top-of-page navigation indicator, with a generation token so stale completion callbacks from cancelled navigations can't flash the bar.
+- macOS-only `ScreenCaptureKit` audio loopback gated behind an opt-in `sckit-loopback` feature flag, and a cross-platform cursor sampler that finally unblocks the macOS / Linux recording paths.
+- Hardware-encoder startup probe + documentation of hardware requirements, so the encoder picker no longer fails late inside FFmpeg when a GPU encoder isn't actually installed.
+- Tabbed Settings interface (Local / Cloud / General) replacing the previous single-column scroll, with each tab keeping its own subtle slide-in.
+- Editor "capture frame" action: grab the current composited frame and copy it to the clipboard from the player controls.
+- Homebrew Cask publishing workflow and matching install instructions for macOS alongside the existing `.dmg`, `.deb`, `.AppImage`, and `.exe` artifacts.
+- Pricing page footer / navbar "Join Waitlist" entry and a refreshed pricing layout.
+- Top-level formatting + linting scripts wired through Turbo, so `pnpm format` and `pnpm lint` run consistently across the monorepo.
+
+### Changed
+- Export pipeline now multi-threads VP9 encodes and hardware-accelerates AMD / Intel paths in addition to NVENC, with a RAM-bounded capture queue to prevent runaway memory during long recordings.
+- Editor performance: thumbnails are batched into a single FFmpeg call, the preview falls back to WebGL2 where supported, and a temp-file sweep reclaims scratch storage during sessions.
+- Camera pause-trim is now hardware-accelerated end-to-end, removing the worst stalls on long captures with camera overlay.
+- Smart-zoom suggestions tightened with improved scoring + clustering (continuing the 0.1.8 rework with better dedupe behavior under repeat clicks).
+- Toaster + theming updated for consistent visual language across the corner notifications it shares space with.
+- Trusted-origins handling in `better-auth` now reads CSV-formatted env vars, and the env schema defaults sensible URLs for optional CSV fields so first-run setups don't trip on missing values.
+
+### Fixed
+- Updater manifest generation now runs even when one of the per-platform build legs fails, so a partial release no longer leaves the auto-updater pointing at the previous version forever.
+- MSIX builds now stage the FFmpeg sidecars correctly (and stop uploading internal `.deb` payloads as release artifacts).
+- FFmpeg / ffprobe spawn audit completed: every spawn site uses `configure_silent_command` on Windows, so console-flash focus theft no longer reads as "the whole window froze".
+- "Recording stop" failures no longer get blamed on FFmpeg by default — the UI now resets client-side state cleanly on stop-failure and reports the actual cause when there is one.
+- Diagnostics: file logging stays enabled in release builds and surfaces the full `anyhow` cause chain, so support reports actually contain the root error.
+- Pinned `apple-metal` to `0.6.1` for CI compatibility so macOS leg builds don't break on transitive bumps.
+- Contact email updated to the new address in Footer and Navbar.
+- Various button + UI fixes: prevent text selection on `<Button>`, button hover regressions, and a Vercel deploy workflow tweak so install no longer fails on lockfile drift.
+
+## [0.1.9] — 2026-05-23
+
+### Added
+- Inline playback for recordings: tapping a card on the exports page now
+  opens a `PlayerDialog` powered by `@doove/player` (DoovePlayer) with the
+  branded media-chrome controls, instead of jumping straight to the file
+  location. "Show in folder" stays one click away inside the dialog footer.
+- Global `@doove/player/styles.css` import in the desktop root layout so
+  any future inline players pick up the same theming without per-route
+  boilerplate.
+
+### Fixed
+- Pointer-events leak from floating UI surfaces in the Tauri build:
+  `DropdownMenu`, `HoverCard`, `Popover`, and `Select` content wrappers now
+  also default `preventScroll={false}` (matching the earlier `Dialog` and
+  `Sheet` fix from 0.1.6), so a closed menu or popover can no longer leave
+  `pointer-events: none` on the document body and freeze the window.
+
+## [0.1.8] — 2026-05-22
+
+### Added
+- Pause and resume during recording with controls in the recording panel and
+  a clearer status indicator, so a notification or knock at the door no longer
+  forces a restart.
+- Auto-updater and "What's new" notifications in the bottom-right corner of
+  the editor, so release prompts and changelog nudges stay out of the way of
+  the timeline.
+- Silence detection (phase 1, opt-in under Settings → Experimental): finds
+  dead-air segments by combining waveform analysis with cursor idleness, then
+  offers one-click cuts you can review or dismiss.
+- Dashboard route with a local-storage-backed data layer for recordings and
+  exports, plus first analytics hooks.
+- Web auth foundation: magic-link sign-in and password-reset flows backed by
+  Better Auth + Drizzle, plus a public waitlist endpoint for Doove Cloud.
+- macOS and Linux platform modules for audio and camera capture, paving the
+  way for full feature parity with the Windows build.
+- Homebrew Cask publishing workflow and matching install instructions for
+  macOS alongside the existing `.dmg`, `.deb`, `.AppImage`, and `.exe`
+  artifacts.
+
+### Changed
+- Smart-zoom suggestions: new scoring model that clusters clicks, weighs
+  dwell time, and dedupes same-spot triggers, so auto-applied focus regions
+  land on the moments that actually matter instead of every mouse-down.
+- Toaster restyled to share visual language with the bottom-right update
+  notifications: same card geometry, same close affordance, same icon-badge
+  variants. Sits in `bottom-right` everywhere instead of `top-center`.
+- Marketing site: hero copy rewritten to honestly describe the timeline
+  ("the lightest editor you've used") instead of pretending it doesn't
+  exist; new editor-tour rail showcases the auto and manual tools side by
+  side. Features, gamers, pricing pages refreshed too.
+- Recordings library cards (web + desktop) picked up techy framing —
+  dot-grid placeholders, primary glow, CRT-style corner brackets — so an
+  empty thumbnail reads as "ready for a frame" instead of an empty hole.
+
+### Fixed
+- Window-freeze regression on recording start: every FFmpeg/ffprobe spawn
+  site now uses `configure_silent_command` on Windows so the console flash
+  no longer steals focus and reads as "the whole window is frozen".
+- Closing the recorder window while a recording is in flight no longer
+  drops the capture; the app prompts and resolves the save first.
+
+## [0.1.7] — 2026-05-16
+
+### Added
+- Bulk-select mode for recordings and exports, with a floating action bar
+  for delete and a single-tap "select all".
+- Morph animations when toggling between grid and list views on the
+  recordings and exports pages — same items, no jarring re-flow.
+- One-shot setup scripts (`setup.ps1` / `setup.sh`) so first-time
+  contributors can bring the whole monorepo up with a single command on
+  Windows or macOS/Linux.
+
+### Changed
+- Export filenames now suffix duplicates with `(1)`, `(2)`, ... via a
+  shared `unique_path` helper, so re-exporting the same recording keeps
+  both files instead of silently overwriting the previous one.
+- Quick-start docs screenshot refreshed to show region selection.
+
+### Fixed
+- Hero CTA region: removed an unused background layer that was painting a
+  stray gradient behind the headline on some viewport widths.
+
+## [0.1.6] — 2026-05-10
+
+### Added
+- Version-sync release scripts: every build manifest validates against the
+  release tag and fails fast if a `0.0.0-dev` placeholder slips through.
+- GitHub issue templates for bug reports, feature requests, and
+  performance issues.
+
+### Changed
+- Dialog and Sheet components default `preventScroll={false}` so a closed
+  dialog can no longer leak `pointer-events: none` onto the document body
+  inside Tauri — the root cause of the earlier "the whole window is dead"
+  reports.
+
+### Fixed
+- Resolved an intermittent pointer-blockage bug in the Dialog component
+  that froze interactions after closing a modal.
+- Version placeholders unified across files so dev and release builds no
+  longer disagree about who they are.
+
+## [0.1.5] — 2026-05-09
+
+### Added
+- Linux screen capture: a Wayland-native pipeline using
+  `xdg-desktop-portal` + PipeWire, and a parallel X11 native capture
+  path. Linux recording docs refreshed alongside the new backends.
+- Recording profiles: per-launch capture profiles with dynamic capability
+  combinations, device awareness, and a management UI in Settings.
+- Command palette (⌘K) extracted into a global `CommandPaletteHost`
+  mounted at the root layout, so the shortcut and dialog work on every
+  route — including the editor — not only on routes that render the
+  sidebar.
+- Web download page redesigned with new platform icons and a feature
+  grid.
+
+### Changed
+- Properties panel: shared `PanelSection` primitive replaces ~30 ad-hoc
+  section headers, drops repeated panel-name titles, normalises gap to
+  `gap-4`, and standardises toggle / reset placement across Background,
+  Focus, Annotations, Cursor, Audio, Camera, and Info panels.
+- Design tokens: introduced a Framer-inspired vocabulary (`canvas`,
+  `surface-1/2`, `ink`, `ink-muted`, `hairline`, gradient spotlight cards,
+  elevation shadows) layered on top of the existing shadcn tokens.
+  Primary colour and font stack preserved.
+
+## [0.1.4] — 2026-05-08
+
+### Added
+- Camera overlay in the editor: composite the recorded camera track over
+  the screen video with position presets, size, shape, and mirror
+  toggles. Gated behind a `CAMERA_OVERLAY_UI_ENABLED` feature flag.
+- Cursor: mouse-press events feed into the recorded timeline, and a
+  refreshed set of cursor styles ships with the editor.
+- Native macOS-style page transitions via the View Transitions API, with
+  a smoother titlebar handoff between routes.
+
+### Changed
+- Canvas geometry and aspect-ratio handling: editor geometry helpers now
+  carry the chosen aspect end-to-end (preview, composite, drop-shadow)
+  without per-call ad-hoc math.
+
+## [0.1.3-beta] — 2026-05-07
+
+### Added
+- Active-preset chip in the editor toolbar with a reset-to-source affordance.
+- Per-project preset persistence: applied preset and output aspect round-trip
+  with undo/redo and project autosave.
+
+### Changed
+- GIF export now uses a 2-pass palettegen → paletteuse pipeline, so the
+  progress bar advances in real time instead of sitting at 0% while only the
+  elapsed counter ticked.
+- Presets actually resize the canvas to their target aspect (16:9, 9:16,
+  1:1, 1.91:1) end-to-end through the preview, FFmpeg filter graph, cursor
+  overlay, and drop-shadow rasteriser.
+- Stronger blur annotation: redacts content even at full strength, with
+  scaled tint opacity and an optional gray wash above 0.6 strength.
+- FFmpeg error reporting filters out progress noise so real diagnostic
+  lines reach the failure toast.
+
+### Fixed
+- Region picker "Use area" / "Cancel" buttons now work; closing the main
+  window exits the app instead of leaving aux windows holding the process.
+- Quick action no longer opens the camera preview inside the recording
+  panel window.
+
+## [0.1.2-beta] — 2026-05-06
+
+### Added
+- Timeline workspace: clip bar, playhead, ruler, toolbar, and zoom lane components.
+- Blur annotations with adjustable strength, rendered through the composite canvas pipeline.
+- Cursor animation effects: click bounce, idle sway, and motion blur.
+- Glass card and chip components for a more refined UI surface.
+- `Kbd` component for consistent keyboard shortcut hints.
+- Region selection in the source picker, with last-used source persistence.
+- Camera overlay settings and validation, plus browser-based camera enumeration.
+- Command palette (⌘K) with global navigation, recording, theme and external commands.
+- Sidebar pinning and hover behavior.
+
+### Changed
+- Refactored project structure for readability and maintainability.
+- Upgraded Node.js to v24 and enabled `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`.
+- Redesigned loading screen with new logo and progress bar.
+- Polished typography, spacing, and accessibility across annotation panels and headers.
+
+### Fixed
+- Reverted erroneous app version bump; settings layout regressions cleaned up.
+
+## [0.1.0-beta] — Initial beta
+
+- First public beta of Doove: offline-first desktop screen recorder and editor
+  built on Tauri v2, Svelte 5, and Rust.

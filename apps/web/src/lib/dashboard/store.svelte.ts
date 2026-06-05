@@ -1,0 +1,293 @@
+import { safeStorage } from "@doove/ui/persisted-state";
+
+/**
+ * Dashboard data layer.
+ *
+ * Now backed by the real /api endpoints. `hydrate()` accepts server-loaded
+ * dooves from the page loader and replaces the in-memory list. The
+ * localStorage layer is retained only as an offline fallback — if a
+ * reload happens while disconnected, the last cache shows instead of an
+ * empty shell.
+ */
+
+export type RecordingSource = "cloud" | "local";
+
+export type Doove = {
+	id: string;
+	title: string;
+	durationSec: number;
+	createdAt: number;
+	sizeBytes: number;
+	source: RecordingSource;
+	provider: string | null;
+	views: number;
+	/** Owning folder, or null for the library root. */
+	folderId: string | null;
+	/** Tag ids — resolved against the workspace tag list in the UI. */
+	tags: string[];
+	/** Playable URL. May be a `blob:` URL for session uploads. */
+	videoUrl: string;
+	/** Poster image; empty string renders a gradient placeholder. */
+	posterUrl: string;
+	/** Slug of the doove's most recent share, or null if never shared. The
+	 *  public link is `/share/{latestShareSlug}` — NOT `/share/{id}`. */
+	latestShareSlug?: string | null;
+};
+
+/** Workspace storage quota used by the sidebar meter. */
+export const STORAGE_QUOTA_BYTES = 5 * 1024 ** 3;
+
+const REC_KEY = "doove.dashboard.recordings.v1";
+const SET_KEY = "doove.dashboard.settings.v1";
+
+// Stable, public sample media so playback genuinely works on dummy data.
+function sample(name: string) {
+	return {
+		videoUrl: `https://storage.googleapis.com/gtv-videos-bucket/sample/${name}.mp4`,
+		posterUrl: `https://storage.googleapis.com/gtv-videos-bucket/sample/images/${name}.jpg`,
+	};
+}
+
+const DAY = 86_400_000;
+
+function seedRecordings(): Doove[] {
+	const now = Date.now();
+	return [
+		{ id: "rec_walkthrough", title: "Series A — product walkthrough", durationSec: 252, createdAt: now - 1 * DAY, sizeBytes: 191_000_000, source: "cloud", provider: "Cloudinary", views: 48, ...sample("BigBuckBunny") },
+		{ id: "rec_onboarding", title: "Onboarding flow v3", durationSec: 158, createdAt: now - 3 * DAY, sizeBytes: 101_000_000, source: "cloud", provider: "Cloudinary", views: 213, ...sample("ElephantsDream") },
+		{ id: "rec_changelog", title: "Changelog — sprint 22", durationSec: 64, createdAt: now - 4 * DAY, sizeBytes: 43_000_000, source: "local", provider: null, views: 0, ...sample("ForBiggerBlazes") },
+		{ id: "rec_bug", title: "Bug repro — export hang", durationSec: 52, createdAt: now - 6 * DAY, sizeBytes: 33_000_000, source: "local", provider: null, views: 0, ...sample("ForBiggerEscapes") },
+		{ id: "rec_teaser", title: "Launch teaser cut", durationSec: 31, createdAt: now - 9 * DAY, sizeBytes: 22_000_000, source: "cloud", provider: "Cloudinary", views: 1024, ...sample("ForBiggerFun") },
+		{ id: "rec_support", title: "Support reply — billing", durationSec: 107, createdAt: now - 13 * DAY, sizeBytes: 68_000_000, source: "local", provider: null, views: 0, ...sample("ForBiggerJoyrides") },
+	].map((r) => ({ folderId: null, tags: [] as string[], ...r })) as Doove[];
+}
+
+/** Blob URLs don't survive a reload — fall back to sample media so the
+ *  recording stays playable rather than becoming a dead entry. */
+function reconcile(r: Doove): Doove {
+	if (r.videoUrl?.startsWith("blob:")) {
+		return { ...r, ...sample("WeAreGoingOnBubbles"), posterUrl: "" };
+	}
+	return r;
+}
+
+class RecordingsStore {
+	items = $state<Doove[]>([]);
+	hydrated = $state(false);
+
+	constructor() {
+		const stored = safeStorage.get<Doove[] | null>(REC_KEY, null);
+		// Until `hydrate()` is called we show the last cached server list,
+		// or — if we've never seen one — the dummy seed so the design
+		// surface stays explorable on logged-out previews.
+		this.items = (stored ?? seedRecordings()).map(reconcile);
+	}
+
+	/**
+	 * Replace the in-memory list with server-loaded rows. Persisted to
+	 * localStorage so the next cold load shows the same content instantly
+	 * (then immediately revalidated by the next `hydrate()` call).
+	 */
+	hydrate(server: Doove[]) {
+		this.items = server;
+		this.hydrated = true;
+		this.persist();
+	}
+
+	private persist() {
+		safeStorage.set(REC_KEY, this.items);
+	}
+
+	get usedBytes(): number {
+		return this.items.reduce((sum, r) => sum + r.sizeBytes, 0);
+	}
+
+	get cloudCount(): number {
+		return this.items.filter((r) => r.source === "cloud").length;
+	}
+
+	add(rec: Doove) {
+		this.items = [rec, ...this.items];
+		this.persist();
+	}
+
+	remove(id: string) {
+		this.items = this.items.filter((r) => r.id !== id);
+		this.persist();
+	}
+
+	rename(id: string, title: string) {
+		this.items = this.items.map((r) =>
+			r.id === id ? { ...r, title } : r,
+		);
+		this.persist();
+	}
+
+	setSource(id: string, source: RecordingSource) {
+		this.items = this.items.map((r) =>
+			r.id === id
+				? { ...r, source, provider: source === "cloud" ? "Cloudinary" : null }
+				: r,
+		);
+		this.persist();
+	}
+
+	/** Move a doove to a folder (or null for root). Local mirror of the
+	 *  PATCH /api/dooves/[id] call the caller makes. */
+	move(id: string, folderId: string | null) {
+		this.items = this.items.map((r) => (r.id === id ? { ...r, folderId } : r));
+		this.persist();
+	}
+
+	/** Replace a doove's tag id set. Mirrors PUT /api/dooves/[id]/tags. */
+	setTags(id: string, tags: string[]) {
+		this.items = this.items.map((r) => (r.id === id ? { ...r, tags } : r));
+		this.persist();
+	}
+
+	/** Cache a freshly-minted share slug so "Copy link" reuses it instead of
+	 *  creating a duplicate share on the next click. */
+	setShareSlug(id: string, slug: string) {
+		this.items = this.items.map((r) =>
+			r.id === id ? { ...r, latestShareSlug: slug } : r,
+		);
+		this.persist();
+	}
+
+	/** Swap a doove's poster after a replace (mirrors PUT /api/dooves/[id]/poster). */
+	setPoster(id: string, posterUrl: string) {
+		this.items = this.items.map((r) => (r.id === id ? { ...r, posterUrl } : r));
+		this.persist();
+	}
+
+	/** Strip a tag id from every doove that carried it (after the tag is
+	 *  deleted server-side; the doove_tag rows cascade, this mirrors it locally). */
+	removeTagEverywhere(tagId: string) {
+		this.items = this.items.map((r) =>
+			r.tags.includes(tagId) ? { ...r, tags: r.tags.filter((t) => t !== tagId) } : r,
+		);
+		this.persist();
+	}
+
+	/** Drop a folder reference from any doove that pointed at it (after the
+	 *  folder — or its subtree — is deleted server-side; dooves fall to root). */
+	clearFolder(folderIds: Set<string>) {
+		this.items = this.items.map((r) =>
+			r.folderId && folderIds.has(r.folderId) ? { ...r, folderId: null } : r,
+		);
+		this.persist();
+	}
+
+	/**
+	 * Bump the view counter when the player reports `view-start`. We count
+	 * the unique-per-session pattern naively (one bump per call) — the
+	 * caller (PlayerDialog → dooves page) only fires this once per open
+	 * via the `started` latch, so refresh-spam doesn't inflate the count.
+	 */
+	incrementViews(id: string) {
+		this.items = this.items.map((r) =>
+			r.id === id ? { ...r, views: r.views + 1 } : r,
+		);
+		this.persist();
+	}
+
+	reset() {
+		this.items = seedRecordings();
+		this.persist();
+	}
+}
+
+export type DashboardSettings = {
+	profile: { name: string; email: string };
+	cloudinary: {
+		cloudName: string;
+		apiKey: string;
+		apiSecret: string;
+		uploadPreset: string;
+		connected: boolean;
+	};
+	preferences: {
+		defaultDestination: RecordingSource;
+		autoUpload: boolean;
+	};
+};
+
+const defaultSettings: DashboardSettings = {
+	profile: { name: "Kanak Kholwal", email: "kanak@perssonify.com" },
+	cloudinary: {
+		cloudName: "",
+		apiKey: "",
+		apiSecret: "",
+		uploadPreset: "",
+		connected: false,
+	},
+	preferences: { defaultDestination: "local", autoUpload: false },
+};
+
+class SettingsStore {
+	value = $state<DashboardSettings>(defaultSettings);
+
+	constructor() {
+		const s = safeStorage.get<Partial<DashboardSettings>>(SET_KEY, {});
+		this.value = {
+			profile: { ...defaultSettings.profile, ...s.profile },
+			cloudinary: { ...defaultSettings.cloudinary, ...s.cloudinary },
+			preferences: { ...defaultSettings.preferences, ...s.preferences },
+		};
+	}
+
+	save() {
+		safeStorage.set(SET_KEY, this.value);
+	}
+
+	get initials(): string {
+		return (
+			this.value.profile.name
+				.split(/\s+/)
+				.filter(Boolean)
+				.slice(0, 2)
+				.map((w) => w[0]!.toUpperCase())
+				.join("") || "R"
+		);
+	}
+}
+
+/**
+ * Workspace quota snapshot — usage vs plan caps. Hydrated by the
+ * dashboard layout from `getQuotaSnapshot` on the server side. Reads
+ * Infinity-coerced-to-null for unlimited caps (Enterprise tier).
+ */
+export type QuotaSnapshot = {
+	plan: "free" | "pro" | "enterprise";
+	usage: {
+		storageBytes: number;
+		activeDoovesCount: number;
+		archivedDoovesCount: number;
+		membersCount: number;
+	};
+	limits: {
+		storageBytes: number | null;
+		activeDooves: number | null;
+		members: number | null;
+		maxDurationSec: number | null;
+		playbackMaxHeight: number;
+	};
+	storagePctUsed: number;
+};
+
+class QuotaStore {
+	value = $state<QuotaSnapshot | null>(null);
+
+	hydrate(snap: QuotaSnapshot | null) {
+		this.value = snap;
+	}
+
+	/** % of storage cap used; 0 when the workspace is unlimited. */
+	get storagePct(): number {
+		return this.value?.storagePctUsed ?? 0;
+	}
+}
+
+export const doovesStore = new RecordingsStore();
+export const settingsStore = new SettingsStore();
+export const quotaStore = new QuotaStore();

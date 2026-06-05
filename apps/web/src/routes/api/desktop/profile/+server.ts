@@ -1,0 +1,150 @@
+import { getAuth } from "$lib/auth/server";
+import { PLANS, type PlanId } from "$lib/billing/plans";
+import { getDb } from "$lib/db";
+import {
+	member as memberTable,
+	organization as organizationTable,
+	doove as dooveTable,
+	share as shareTable,
+	subscription as subscriptionTable,
+	user as userTable,
+} from "$lib/db/schema";
+import { and, count, eq, gt, isNull, or, sum } from "drizzle-orm";
+import { error, json, type RequestHandler } from "@sveltejs/kit";
+
+type SessionShape = {
+	user: {
+		id: string;
+		email: string;
+		name?: string | null;
+		image?: string | null;
+		activeOrganizationId?: string | null;
+	};
+};
+
+/**
+ * Desktop "Sign in to Cloud" profile endpoint.
+ *
+ * Returns enough data for the desktop's Settings → Cloud signed-in card to
+ * render a real user profile (avatar, plan badge, usage stats) without the
+ * frontend needing N parallel calls. Authenticated via the bearer plugin —
+ * the desktop passes `Authorization: Bearer <session.token>`.
+ *
+ * Why this endpoint (vs. just /api/auth/get-session): get-session only
+ * returns the user row. We also need the user's plan (from `subscription`),
+ * recordings count + storage usage (sum from `doove`), and active-share
+ * count (from `share`). One round-trip is cheaper than three.
+ */
+export const GET: RequestHandler = async ({ request }) => {
+	const auth = getAuth();
+	const session = (await auth.api
+		.getSession({ headers: request.headers })
+		.catch(() => null)) as SessionShape | null;
+
+	if (!session?.user?.id) throw error(401, "unauthorized");
+
+	const db = getDb();
+	const userId = session.user.id;
+
+	// Run the aggregate queries in parallel — they don't depend on each
+	// other and each is cheap (single-table indexed scan / counter read).
+	const [userRow, subRow, dooveAgg, shareAgg, memberships] = await Promise.all([
+		db
+			.select({
+				email: userTable.email,
+				name: userTable.name,
+				image: userTable.image,
+				createdAt: userTable.createdAt,
+			})
+			.from(userTable)
+			.where(eq(userTable.id, userId))
+			.limit(1)
+			.then((rows) => rows[0] ?? null),
+		db
+			.select({
+				plan: subscriptionTable.plan,
+				status: subscriptionTable.status,
+				currentPeriodEnd: subscriptionTable.currentPeriodEnd,
+				cancelAtPeriodEnd: subscriptionTable.cancelAtPeriodEnd,
+			})
+			.from(subscriptionTable)
+			.where(eq(subscriptionTable.userId, userId))
+			.limit(1)
+			.then((rows) => rows[0] ?? null),
+		db
+			.select({
+				recordings: count(),
+				// Drizzle's `sum` returns string | null on PG for bigint columns;
+				// coerce after the fetch.
+				storage: sum(dooveTable.sizeBytes),
+			})
+			.from(dooveTable)
+			.where(and(eq(dooveTable.ownerId, userId), isNull(dooveTable.deletedAt)))
+			.then((rows) => rows[0] ?? { recordings: 0, storage: "0" }),
+		db
+			.select({ active: count() })
+			.from(shareTable)
+			.where(
+				and(
+					eq(shareTable.ownerId, userId),
+					// "Active" = no expiry OR not yet expired.
+					or(isNull(shareTable.expiresAt), gt(shareTable.expiresAt, new Date())),
+				),
+			)
+			.then((rows) => rows[0] ?? { active: 0 }),
+		// Workspaces the user belongs to — the desktop needs an explicit
+		// workspaceId for /api/uploads/init (its device session may not
+		// carry an activeOrganizationId).
+		db
+			.select({
+				id: organizationTable.id,
+				name: organizationTable.name,
+				role: memberTable.role,
+			})
+			.from(memberTable)
+			.innerJoin(organizationTable, eq(memberTable.organizationId, organizationTable.id))
+			.where(eq(memberTable.userId, userId)),
+	]);
+
+	if (!userRow) throw error(404, "user_not_found");
+
+	// Default upload target: the session's active org if the user is still a
+	// member, else their first workspace. null only if they belong to none.
+	const workspaces = memberships.map((m) => ({ id: m.id, name: m.name, role: m.role }));
+	const activeId = session.user.activeOrganizationId ?? null;
+	const defaultWorkspaceId =
+		(activeId && workspaces.some((w) => w.id === activeId) ? activeId : workspaces[0]?.id) ??
+		null;
+
+	// Default to free if there's no subscription row (the seed for new users
+	// only inserts on Polar webhook). Same fallback the org plugin uses.
+	const planId: PlanId = (subRow?.plan as PlanId | undefined) ?? "free";
+	const plan = PLANS[planId];
+	const sharesLimit = Number.isFinite(plan.limits.activeShares)
+		? plan.limits.activeShares
+		: null;
+
+	return json({
+		user: {
+			email: userRow.email,
+			name: userRow.name ?? null,
+			image: userRow.image ?? null,
+			memberSince: userRow.createdAt?.toISOString() ?? null,
+		},
+		plan: {
+			id: plan.id,
+			name: plan.name,
+			status: subRow?.status ?? "active",
+			currentPeriodEnd: subRow?.currentPeriodEnd?.toISOString() ?? null,
+			cancelAtPeriodEnd: subRow?.cancelAtPeriodEnd ?? false,
+		},
+		usage: {
+			recordings: Number(dooveAgg.recordings) || 0,
+			storageBytes: Number(dooveAgg.storage ?? 0) || 0,
+			activeShares: Number(shareAgg.active) || 0,
+			sharesLimit, // null = unlimited
+		},
+		workspaces,
+		defaultWorkspaceId,
+	});
+};

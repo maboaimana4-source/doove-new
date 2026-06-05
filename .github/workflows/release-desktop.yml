@@ -1,0 +1,369 @@
+name: Release Desktop App
+
+# Per-step shell logic lives under `scripts/release/`. The workflow file is
+# kept structural: matrix, gates, secrets, artifact wiring. The procedural
+# detail (release-body markdown, MSIX packaging, FFmpeg sidecar download,
+# version sync, etc.) is each its own file you can read top-to-bottom
+# instead of squinting at YAML heredocs.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v1.0.0)"
+        required: true
+        type: string
+
+concurrency:
+  group: release-desktop-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: "24"
+  PNPM_VERSION: "10.23.0"
+  RUST_BACKTRACE: "1"
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  # FFmpeg version pinned for reproducible release builds. Bump deliberately;
+  # do NOT track "latest". Per-OS download details live in
+  # `scripts/release/download-ffmpeg-{windows,macos,linux}.{ps1,sh}`.
+  FFMPEG_VERSION: "7.1"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    outputs:
+      release_id: ${{ steps.create_release.outputs.id }}
+      tag_name: ${{ steps.resolve_tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Resolve tag
+        id: resolve_tag
+        shell: bash
+        run: echo "tag=${{ github.event.inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve previous tag for compare link
+        id: prev_tag
+        shell: bash
+        env:
+          TAG: ${{ steps.resolve_tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # Fetch the full tag history so `git describe` can find the prior tag.
+          git fetch --tags --force --quiet
+          prev=$(git describe --tags --abbrev=0 --match 'v*' "${TAG}^" 2>/dev/null || true)
+          echo "prev=${prev}" >> "$GITHUB_OUTPUT"
+
+      - name: Build release body
+        id: build_body
+        shell: bash
+        env:
+          TAG: ${{ steps.resolve_tag.outputs.tag }}
+          PREV_TAG: ${{ steps.prev_tag.outputs.prev }}
+          REPO: kanakkholwal/doove
+        run: bash scripts/release/build-release-body.sh
+
+      - name: Create or reuse draft release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.resolve_tag.outputs.tag }}
+          name: Doove ${{ steps.resolve_tag.outputs.tag }}
+          draft: true
+          prerelease: false
+          # Auto-generate "what's changed" only when the changelog has no
+          # section for this tag; otherwise the curated CHANGELOG entry wins.
+          generate_release_notes: ${{ steps.build_body.outputs.found != 'true' }}
+          body: ${{ steps.build_body.outputs.body }}
+
+  build-desktop:
+    name: Build (${{ matrix.platform.name }})
+    needs: create-release
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - name: macos-arm64
+            os: macos-latest
+            rust_target: aarch64-apple-darwin
+            tauri_args: --target aarch64-apple-darwin
+          - name: macos-x64
+            os: macos-latest
+            rust_target: x86_64-apple-darwin
+            tauri_args: --target x86_64-apple-darwin
+          - name: linux-x64
+            os: ubuntu-24.04
+            rust_target: x86_64-unknown-linux-gnu
+            tauri_args: ""
+          - name: windows-x64
+            os: windows-latest
+            rust_target: x86_64-pc-windows-msvc
+            tauri_args: ""
+    runs-on: ${{ matrix.platform.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform.rust_target }}
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "./apps/desktop/src-tauri -> target"
+          key: ${{ matrix.platform.rust_target }}
+          shared-key: tauri-${{ matrix.platform.name }}
+          cache-on-failure: true
+
+      - name: Cache turbo build outputs
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ matrix.platform.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ matrix.platform.os }}-
+
+      - name: Install Linux system dependencies
+        if: matrix.platform.os == 'ubuntu-24.04'
+        run: bash scripts/release/install-linux-deps.sh
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache FFmpeg sidecars
+        id: ffmpeg-cache
+        # A flaky cache restore must never sink the whole release leg: the
+        # sidecars are re-downloadable from the step below. On a cache error
+        # `cache-hit` stays falsy, so the download step runs and the build
+        # still gets its FFmpeg binaries.
+        continue-on-error: true
+        uses: actions/cache@v4
+        with:
+          path: apps/desktop/src-tauri/binaries
+          key: ffmpeg-${{ env.FFMPEG_VERSION }}-${{ matrix.platform.rust_target }}
+
+      - name: Download FFmpeg sidecars (Windows)
+        if: matrix.platform.os == 'windows-latest' && steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: ./scripts/release/download-ffmpeg-windows.ps1 -RustTarget '${{ matrix.platform.rust_target }}' -Dest 'apps/desktop/src-tauri/binaries'
+
+      - name: Download FFmpeg sidecars (macOS)
+        if: matrix.platform.os == 'macos-latest' && steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: bash scripts/release/download-ffmpeg-macos.sh '${{ matrix.platform.rust_target }}' 'apps/desktop/src-tauri/binaries'
+
+      - name: Download FFmpeg sidecars (Linux)
+        if: matrix.platform.os == 'ubuntu-24.04' && steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: bash scripts/release/download-ffmpeg-linux.sh '${{ matrix.platform.rust_target }}' 'apps/desktop/src-tauri/binaries'
+
+      - name: Verify FFmpeg sidecars (encoders required for export)
+        shell: bash
+        run: bash scripts/release/verify-ffmpeg-sidecars.sh '${{ matrix.platform.rust_target }}' 'apps/desktop/src-tauri/binaries' '${{ matrix.platform.os }}'
+
+      - name: Sync version from tag
+        env:
+          TAG: ${{ needs.create-release.outputs.tag_name }}
+        run: node scripts/release/sync-version.mjs
+
+      # Google Drive OAuth client credentials. The Rust gdrive module pulls
+      # these via `option_env!` at compile time (with a runtime
+      # std::env::var fallback for local dev), so they must be visible to
+      # cargo during `tauri build`. Writing to apps/desktop/.env mirrors
+      # the local dev path exactly — dotenvy in lib.rs picks them up, and
+      # `option_env!` resolves from the build process env that cargo
+      # inherits. Forks without secrets get empty values; gdrive_connect
+      # then returns "OAuth not configured" instead of failing the build.
+      - name: Write Google OAuth credentials to apps/desktop/.env
+        shell: bash
+        run: |
+          {
+            echo "GOOGLE_OAUTH_CLIENT_ID=${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}"
+            echo "GOOGLE_OAUTH_CLIENT_SECRET=${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}"
+          } >> apps/desktop/.env
+
+      - name: Build Tauri app
+        shell: bash
+        env:
+          # Signs the updater artifacts (.sig files) so the running app can
+          # verify a download against the pubkey baked into tauri.conf.json.
+          # Add these as repo secrets — without them `tauri build` still
+          # succeeds but produces unsigned bundles the updater will reject.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Belt-and-suspenders: pass the OAuth creds via env too, so
+          # `option_env!` resolves even on hosts where dotenvy isn't
+          # active during build (e.g. if .env loading fails silently).
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+        run: pnpm --filter doove-desktop tauri build ${{ matrix.platform.tauri_args }}
+
+      - name: Tag macOS updater bundle with arch
+        if: matrix.platform.os == 'macos-latest'
+        env:
+          TAG: ${{ needs.create-release.outputs.tag_name }}
+          RUST_TARGET: ${{ matrix.platform.rust_target }}
+        run: bash scripts/release/rename-macos-updater-bundle.sh
+
+      - name: Package MSIX (Windows)
+        if: matrix.platform.os == 'windows-latest'
+        shell: pwsh
+        env:
+          TAG: ${{ needs.create-release.outputs.tag_name }}
+        run: ./scripts/release/package-msix.ps1 -RustTarget '${{ matrix.platform.rust_target }}'
+
+      - name: Prepare release assets
+        shell: pwsh
+        run: ./scripts/release/prepare-release-assets.ps1 -PlatformName '${{ matrix.platform.name }}' -RustTarget '${{ matrix.platform.rust_target }}'
+
+      - name: Attest release assets
+        uses: actions/attest@v4
+        with:
+          subject-path: release-assets/*
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.create-release.outputs.tag_name }}
+          draft: true
+          prerelease: false
+          files: release-assets/*
+          fail_on_unmatched_files: true
+
+      - name: Upload updater signatures for manifest
+        # The generate-manifest job assembles latest.json from these `.sig`
+        # files. Only the signatures are needed — the manifest references
+        # the bundles by their release-asset URL. If signing secrets are
+        # unset no `.sig` files exist; the manifest job then fails loudly
+        # with a clear message rather than publishing a broken updater.
+        uses: actions/upload-artifact@v4
+        with:
+          name: updater-sigs-${{ matrix.platform.name }}
+          path: release-assets/*.sig
+          if-no-files-found: warn
+          retention-days: 1
+
+      - name: Upload build artifacts (debug aid)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: doove-${{ matrix.platform.name }}-${{ needs.create-release.outputs.tag_name }}
+          path: |
+            apps/desktop/src-tauri/target/release/bundle/**/*
+            apps/desktop/src-tauri/target/${{ matrix.platform.rust_target }}/release/bundle/**/*
+          if-no-files-found: ignore
+          retention-days: 7
+
+  generate-manifest:
+    name: Generate updater manifest
+    needs: [create-release, build-desktop]
+    # Run even when one build leg fails — `generate-latest-json.mjs` warns
+    # and skips platforms whose `.sig` artifact is missing, so the manifest
+    # still publishes for the legs that succeeded. Only `!cancelled()` is
+    # needed (not `always()`) because a cancelled run shouldn't produce a
+    # half-finished manifest. If every leg fails, the script's final
+    # zero-platform guard surfaces a clear error.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Download updater signatures
+        uses: actions/download-artifact@v4
+        with:
+          pattern: updater-sigs-*
+          path: updater-sigs
+          merge-multiple: true
+
+      - name: Generate latest.json
+        run: |
+          node scripts/generate-latest-json.mjs \
+            --tag "${{ needs.create-release.outputs.tag_name }}" \
+            --repo "${{ github.repository }}" \
+            --dir updater-sigs \
+            --require "windows-x86_64,linux-x86_64,darwin-aarch64,darwin-x86_64" \
+            --out latest.json
+          echo "----- latest.json -----"
+          cat latest.json
+
+      - name: Upload latest.json to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.create-release.outputs.tag_name }}
+          draft: true
+          prerelease: false
+          files: latest.json
+          fail_on_unmatched_files: true
+
+  publish-release:
+    name: Publish release
+    needs: [create-release, build-desktop, generate-manifest]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Publish draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.create-release.outputs.tag_name }}
+          draft: false
+          prerelease: false
+
+  publish-homebrew-cask:
+    name: Publish Homebrew Cask
+    # Runs after the release is public so the DMGs are downloadable
+    # from the release URL the cask formula will reference. The script
+    # itself no-ops when HOMEBREW_TAP_TOKEN is unset, so this job is
+    # safe to keep enabled before the tap is bootstrapped — it just
+    # surfaces a `::notice::` and exits 0.
+    needs: [create-release, publish-release]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update Homebrew Cask formula
+        env:
+          TAG: ${{ needs.create-release.outputs.tag_name }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: bash scripts/release/update-homebrew-cask.sh
