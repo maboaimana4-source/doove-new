@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+@theme {
+	--color-doove-purple: #7c3aed;
+	--color-doove-blue: #3b82f6;
+}
+
+:root {
+	color-scheme: dark;
+}
+
+body {
+	@apply bg-zinc-950 text-zinc-50 antialiased;
+	font-family: "Inter", sans-serif;
+}
+
+.glass {
+	@apply bg-white/5 backdrop-blur-xl border border-white/10;
+}
+
+.gradient-text {
+	@apply bg-clip-text text-transparent bg-gradient-to-r from-doove-purple to-doove-blue;
+}
