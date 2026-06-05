@@ -24,7 +24,7 @@ import {
 import { assetsStore } from "$lib/stores/assets-store.svelte";
 
 const DEFAULT_MANIFEST_URL =
-	"https://github.com/kanakkholwal/doove/releases/download/wallpapers-v1/manifest.json";
+	"https://github.com/taoufikhicham23-stack/Doove-recast/releases/download/wallpapers-v1/manifest.json";
 
 function manifestUrl(): string {
 	const fromEnv = import.meta.env?.PUBLIC_ASSETS_MANIFEST_URL;

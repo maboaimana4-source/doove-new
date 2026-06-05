@@ -127,7 +127,7 @@
 		},
 	};
 
-	const ISSUES_URL = "https://github.com/kanakkholwal/doove/issues/new";
+	const ISSUES_URL = "https://github.com/taoufikhicham23-stack/Doove-recast/issues/new";
 
 	let activeTab = $derived(detectedOS !== "Unknown" ? detectedOS : "macOS");
 
@@ -201,8 +201,8 @@
 				{
 					title: "Fastest: install with Homebrew",
 					body:
-						"One line installs the right build for your Mac and removes the Gatekeeper quarantine automatically — no \"is damaged\" error, and brew keeps it updated. Tap once if you'd rather use the short name: brew tap kanakkholwal/doove, then brew install --cask doove.",
-					code: "brew install --cask kanakkholwal/doove/doove",
+						"One line installs the right build for your Mac and removes the Gatekeeper quarantine automatically — no \"is damaged\" error, and brew keeps it updated. Tap once if you'd rather use the short name: brew tap taoufikhicham23-stack/Doove-recast, then brew install --cask doove.",
+					code: "brew install --cask taoufikhicham23-stack/Doove-recast/doove",
 					hint: "Installed this way? You're done — skip the manual .dmg steps below.",
 				},
 				{
@@ -816,7 +816,7 @@
 					<span>
 						Source on
 						<a
-							href="https://github.com/kanakkholwal/doove"
+							href="https://github.com/taoufikhicham23-stack/Doove-recast"
 							target="_blank"
 							rel="noopener noreferrer"
 							class="font-semibold text-foreground transition-colors hover:text-primary"
@@ -828,7 +828,7 @@
 				<span class="font-mono text-xs">
 					Verify checksums on the
 					<a
-						href="https://github.com/kanakkholwal/doove/releases/latest"
+						href="https://github.com/taoufikhicham23-stack/Doove-recast/releases/latest"
 						target="_blank"
 						rel="noopener noreferrer"
 						class="font-semibold text-foreground transition-colors hover:text-primary"

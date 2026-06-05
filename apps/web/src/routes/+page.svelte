@@ -452,7 +452,7 @@
 						{ name: "Vite", slug: "vite", href: "https://vitejs.dev" },
 						{ name: "FFmpeg", slug: "ffmpeg", href: "https://ffmpeg.org" },
 						{ name: "Tailwind CSS", slug: "tailwindcss", href: "https://tailwindcss.com" },
-						{ name: "GitHub", slug: "github", href: "https://github.com/kanakkholwal/doove" },
+						{ name: "GitHub", slug: "github", href: "https://github.com/taoufikhicham23-stack/Doove-recast" },
 					] as logo}
 						<a
 							href={logo.href}

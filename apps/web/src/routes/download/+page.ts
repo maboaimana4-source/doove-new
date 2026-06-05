@@ -10,7 +10,7 @@ export const load: PageLoad = async ({ fetch, setHeaders }) => {
   });
 
   try {
-    const response = await fetch('https://api.github.com/repos/kanakkholwal/doove/releases/latest');
+    const response = await fetch('https://api.github.com/repos/taoufikhicham23-stack/Doove-recast/releases/latest');
     
     if (!response.ok) throw new Error('Failed to fetch release');
     

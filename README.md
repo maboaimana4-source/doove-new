@@ -17,8 +17,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/kanakkholwal/doove/blob/main/LICENSE.md"><img src="https://img.shields.io/badge/license-Dual_License-blue.svg?style=flat-square" alt="License: Dual License (GPLv3 / Commercial)"></a>
-  <a href="https://github.com/kanakkholwal/doove/actions/workflows/deploy-web.yml"><img src="https://github.com/kanakkholwal/doove/actions/workflows/deploy-web.yml/badge.svg" alt="Web deploy status"></a>
+  <a href="https://github.com/taoufikhicham23-stack/Doove-recast/blob/main/LICENSE.md"><img src="https://img.shields.io/badge/license-Dual_License-blue.svg?style=flat-square" alt="License: Dual License (GPLv3 / Commercial)"></a>
+  <a href="https://github.com/taoufikhicham23-stack/Doove-recast/actions/workflows/deploy-web.yml"><img src="https://github.com/taoufikhicham23-stack/Doove-recast/actions/workflows/deploy-web.yml/badge.svg" alt="Web deploy status"></a>
 </p>
 
 ## About
@@ -44,7 +44,7 @@ Prerequisites: Node.js 18+, [pnpm](https://pnpm.io/) 9+, Rust 1.70+, and the
 platform. The setup script can auto-install any of these that are missing.
 
 ```sh
-git clone https://github.com/kanakkholwal/doove.git
+git clone https://github.com/taoufikhicham23-stack/Doove-recast.git
 cd doove
 
 # Windows (PowerShell)

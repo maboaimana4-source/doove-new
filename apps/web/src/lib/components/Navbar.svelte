@@ -21,7 +21,7 @@
 				// GitHub stays in the menu too — the icon button is desktop-only
 				// (md:flex), and mobile users discover external links through
 				// the open menu.
-				{ label: "GitHub", href: "https://github.com/kanakkholwal/doove" },
+				{ label: "GitHub", href: "https://github.com/taoufikhicham23-stack/Doove-recast" },
 				{ label: "Contact", href: "mailto:try-doove@gmail.com" },
 			],
 		},
@@ -41,7 +41,7 @@
 		secondaryButton={{ label: "Cloud Waitlist", href: "/waitlist" }}
 		tertiaryButton={{
 			label: "GitHub",
-			href: "https://github.com/kanakkholwal/doove",
+			href: "https://github.com/taoufikhicham23-stack/Doove-recast",
 			icon: Github,
 			iconOnly: true,
 			ariaLabel: "Doove on GitHub",

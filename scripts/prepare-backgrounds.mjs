@@ -13,7 +13,7 @@
  *
  * Env:
  *   RELEASE_TAG   GitHub release tag to template URLs against (default wallpapers-v1)
- *   GH_REPO       owner/repo for the release (default kanakkholwal/doove)
+ *   GH_REPO       owner/repo for the release (default taoufikhicham23-stack/Doove-recast)
  *
  * Publish flow:
  *   RELEASE_TAG=wallpapers-v1 pnpm prepare:assets-wallpapers
@@ -36,7 +36,7 @@ const THUMBS_DIR = join(ROOT, "assets/backgrounds/thumbs");
 const MANIFEST_PATH = join(ROOT, "assets/manifest.json");
 
 const RELEASE_TAG = process.env.RELEASE_TAG ?? "wallpapers-v1";
-const GH_REPO = process.env.GH_REPO ?? "kanakkholwal/doove";
+const GH_REPO = process.env.GH_REPO ?? "taoufikhicham23-stack/Doove-recast";
 
 const THUMB_WIDTH = 320;
 const THUMB_QUALITY = 78;

@@ -71,7 +71,7 @@ jobs:
         env:
           TAG: ${{ steps.resolve_tag.outputs.tag }}
           PREV_TAG: ${{ steps.prev_tag.outputs.prev }}
-          REPO: kanakkholwal/doove
+          REPO: taoufikhicham23-stack/Doove-recast
         run: bash scripts/release/build-release-body.sh
 
       - name: Create or reuse draft release

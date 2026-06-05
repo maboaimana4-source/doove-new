@@ -23,12 +23,12 @@
 				{ label: "Documentation", href: "#" },
 				{
 					label: "GitHub",
-					href: "https://github.com/kanakkholwal/doove",
+					href: "https://github.com/taoufikhicham23-stack/Doove-recast",
 					external: true,
 				},
 				{
 					label: "Releases",
-					href: "https://github.com/kanakkholwal/doove/releases",
+					href: "https://github.com/taoufikhicham23-stack/Doove-recast/releases",
 					external: true,
 				},
 				{ label: "Changelog", href: "/changelog" },
@@ -40,7 +40,7 @@
 				{ label: "Contact", href: "mailto:try-doove@gmail.com" },
 				{
 					label: "X / Twitter",
-					href: "https://x.com/kanakkholwal",
+					href: "https://x.com/taoufikhicham23-stack",
 					external: true,
 				},
 				{
@@ -53,8 +53,8 @@
 	];
 
 	const socials = [
-		{ icon: Github, href: "https://github.com/kanakkholwal/doove", label: "GitHub" },
-		{ icon: Twitter, href: "https://x.com/kanakkholwal", label: "X / Twitter" },
+		{ icon: Github, href: "https://github.com/taoufikhicham23-stack/Doove-recast", label: "GitHub" },
+		{ icon: Twitter, href: "https://x.com/taoufikhicham23-stack", label: "X / Twitter" },
 		{ icon: Mail, href: "mailto:try-doove@gmail.com", label: "Email" },
 	];
 </script>

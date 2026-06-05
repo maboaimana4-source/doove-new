@@ -4,7 +4,7 @@
 # Inputs (env vars):
 #   TAG       — release tag (e.g. v1.2.3)
 #   PREV_TAG  — previous release tag for the compare link (may be empty)
-#   REPO      — owner/repo slug (e.g. kanakkholwal/doove)
+#   REPO      — owner/repo slug (e.g. taoufikhicham23-stack/Doove-recast)
 #
 # Outputs:
 #   - Writes the assembled markdown to the file path in $1, or a mktemp file.
@@ -58,8 +58,8 @@ fi
   echo "| --- | --- |"
   echo "| Windows 10/11 (x64) — installer | \`doove_${version}_x64-setup.exe\` or \`doove_${version}_x64_en-US.msi\` |"
   echo "| Windows 10/11 (x64) — Store package | \`doove_${version}_x64.msix\` |"
-  echo "| macOS (Apple Silicon) — beta | \`doove_${version}_aarch64.dmg\` · or \`brew install --cask kanakkholwal/doove/doove\` |"
-  echo "| macOS (Intel) — beta | \`doove_${version}_x64.dmg\` · or \`brew install --cask kanakkholwal/doove/doove\` |"
+  echo "| macOS (Apple Silicon) — beta | \`doove_${version}_aarch64.dmg\` · or \`brew install --cask taoufikhicham23-stack/Doove-recast/doove\` |"
+  echo "| macOS (Intel) — beta | \`doove_${version}_x64.dmg\` · or \`brew install --cask taoufikhicham23-stack/Doove-recast/doove\` |"
   echo "| Linux (x64) — universal | \`doove_${version}_amd64.AppImage\` |"
   echo "| Linux (x64) — Debian/Ubuntu | \`doove_${version}_amd64.deb\` |"
   echo
@@ -75,13 +75,13 @@ fi
   echo "macOS support is in **beta**. The smoothest way on is Homebrew — it picks the right build for your chip and **removes the Gatekeeper quarantine for you**, so you never hit the \"is damaged\" error:"
   echo
   echo '```sh'
-  echo "brew install --cask kanakkholwal/doove/doove"
+  echo "brew install --cask taoufikhicham23-stack/Doove-recast/doove"
   echo '```'
   echo
   echo "Prefer the short name? Tap once, then install (and upgrade) with:"
   echo
   echo '```sh'
-  echo "brew tap kanakkholwal/doove"
+  echo "brew tap taoufikhicham23-stack/Doove-recast"
   echo "brew install --cask doove"
   echo '```'
   echo
