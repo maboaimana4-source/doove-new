@@ -70,7 +70,9 @@
   // Land on Recording — the daily-use panel (output directory, profiles,
   // editor behavior) — rather than the leftmost General tab, matching how
   // people actually reach for these settings.
-  let activeTab = $state<SettingsTab>("recording");
+  let activeTab = $state<SettingsTab>(
+    (page.url.searchParams.get("tab") as SettingsTab) || "recording",
+  );
 
   onMount(() => {
     fetchSettings();

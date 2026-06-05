@@ -81,6 +81,11 @@
           >
             Doove
           </span>
+          {#if licenseStore.value.isPro}
+            <span class="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+              Pro
+            </span>
+          {/if}
         {/if}
       </a>
 
@@ -171,7 +176,42 @@
     </Sidebar.Group>
   </Sidebar.Content>
 
-  <Sidebar.Footer class="border-t border-border/30 p-2">
+  <Sidebar.Footer class="border-t border-border/30 p-2 flex flex-col gap-2">
+    {#if !licenseStore.value.isPro}
+      <a 
+        href="https://doove.imara.cloud/pay" 
+        target="_blank"
+        class={cn(
+          "flex items-center gap-2 rounded-lg bg-gradient-to-r from-violet-600 to-blue-600 px-3 py-2 text-white shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]",
+          open ? "h-9 w-full" : "size-8 justify-center p-0"
+        )}
+        title="Upgrade to Doove Pro (5000 FCFA/mois)"
+      >
+        <Sparkles size={14} class="shrink-0" />
+        {#if open}
+          <span class="text-[12px] font-bold">Upgrade Pro</span>
+        {/if}
+      </a>
+      
+      <a 
+        href="/settings"
+        class={cn(
+          "flex items-center gap-2 rounded-lg border border-border/50 bg-background/50 px-3 py-2 text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground",
+          open ? "h-9 w-full" : "size-8 justify-center p-0"
+        )}
+        title="Enter License Key"
+        onclick={(e) => {
+          // If we are already on settings, we might need to trigger the licensing tab.
+          // For now, let's just navigate.
+        }}
+      >
+        <Key size={14} class="shrink-0" />
+        {#if open}
+          <span class="text-[12px] font-medium">Enter Key</span>
+        {/if}
+      </a>
+    {/if}
+
     <Button
       onclick={launchRecordingPanel}
       size="sm"

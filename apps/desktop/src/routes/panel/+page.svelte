@@ -48,6 +48,8 @@
     Volume2,
     VolumeOff,
     X,
+    Key,
+    Sparkles,
   } from "@lucide/svelte";
   import { Button } from "@doove/ui/button";
   import { ButtonGroup } from "@doove/ui/button-group";
@@ -1192,6 +1194,38 @@
       >
         <GripVertical size={12} strokeWidth={2} class="pointer-events-none" />
       </div>
+
+      {#if !licenseStore.value.isPro}
+        <ButtonGroup>
+          <a
+            href="https://doove.imara.cloud/pay"
+            target="_blank"
+            class="flex size-7 items-center justify-center rounded-md bg-gradient-to-r from-violet-600 to-blue-600 text-white shadow-sm transition-transform hover:scale-105 active:scale-95"
+            title="Upgrade to Doove Pro (5000 FCFA/mois)"
+            onmousedown={(e) => e.stopPropagation()}
+          >
+            <Sparkles size={11} class="shrink-0" />
+          </a>
+          <Button
+            onclick={() => {
+              // Open settings on the licensing tab
+              // Since it's a separate window, we need to handle navigation.
+              // For now, let's just use a link to /settings in the main window
+              // But we are in the panel window.
+              // We'll use an IPC or just emit an event.
+              emit("open-settings", { tab: "licensing" });
+            }}
+            onmousedown={(e: MouseEvent) => e.stopPropagation()}
+            size="icon-sm"
+            variant="secondary"
+            title="Enter License Key"
+          >
+            <Key size={11} class="shrink-0" />
+          </Button>
+        </ButtonGroup>
+        <div class="h-4 w-px bg-border/40 mx-0.5"></div>
+      {/if}
+
       <!-- Record. The big primary action; clicking it begins the countdown
            (or starts capture immediately when countdown is off). -->
       <Button

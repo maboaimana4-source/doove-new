@@ -12,6 +12,10 @@
   import { cubicOut } from "svelte/easing";
   import { fade } from "svelte/transition";
 
+  import { goto } from "$app/navigation";
+  import { listen } from "@tauri-apps/api/event";
+  import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+
   let { children } = $props();
   let routeKey = $derived(page.url.pathname);
 
@@ -19,6 +23,18 @@
   // the user already landed on the changelog page), and kick off the
   // background update check. Both render as non-blocking bottom-right cards.
   onMount(() => {
+    const unlistenSettings = listen<{ tab: string }>("open-settings", async (event) => {
+      // Focus the main window
+      const mainWin = await WebviewWindow.getByLabel("main");
+      if (mainWin) {
+        await mainWin.setFocus();
+      }
+      // Navigate to settings with the tab param (if supported) or just settings
+      // Our settings page doesn't currently use a URL param for tabs, it uses local state.
+      // But we can improve it.
+      await goto(`/settings?tab=${event.payload.tab}`);
+    });
+
     if (page.url.pathname.startsWith("/whats-new")) {
       whatsNew.markSeen();
     } else {
