@@ -796,9 +796,7 @@ where
             let offset_a = va - default_val;
             // Linear ramp using lerp-style math:
             // between(t,ta,tb) * (va + (vb-va)*(t-ta)/(tb-ta) - default)
-            format!(
-                "between(t,{ta:.4},{tb:.4})*({offset_a:.4}+{dv:.6}*(t-{ta:.4})/{dt:.4})"
-            )
+            format!("between(t,{ta:.4},{tb:.4})*({offset_a:.4}+{dv:.6}*(t-{ta:.4})/{dt:.4})")
         };
         terms.push(term);
     }
