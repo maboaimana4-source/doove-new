@@ -247,11 +247,6 @@ jobs:
         shell: pwsh
         run: ./scripts/release/prepare-release-assets.ps1 -PlatformName '${{ matrix.platform.name }}' -RustTarget '${{ matrix.platform.rust_target }}'
 
-      - name: Attest release assets
-        uses: actions/attest@v4
-        with:
-          subject-path: release-assets/*
-
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
