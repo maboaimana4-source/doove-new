@@ -11,7 +11,7 @@ const PayPage = () => {
 		setIsLoading(true);
 
 		try {
-			const response = await fetch("https://imara.cloud/api/subscription/create-payment", {
+			const response = await fetch("/api/subscription/create-payment", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				mode: "cors",
