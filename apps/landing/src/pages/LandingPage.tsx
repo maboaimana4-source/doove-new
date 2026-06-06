@@ -15,7 +15,7 @@ const Navbar = () => {
     if (ua.includes('win')) {
       setDownloadUrl(`${DOWNLOAD_BASE_URL}/Doove-windows-x64.exe`);
     } else if (ua.includes('mac')) {
-      setDownloadUrl(`${DOWNLOAD_BASE_URL}/Doove-x64.dmg`);
+      setDownloadUrl(`${DOWNLOAD_BASE_URL}/Doove-macos-x64.dmg`);
     } else if (ua.includes('linux')) {
       setDownloadUrl(`${DOWNLOAD_BASE_URL}/Doove-linux-x64.AppImage`);
     } else {
@@ -90,7 +90,7 @@ const LandingPage = () => {
 
   const getDownloadUrl = (os: 'windows' | 'mac' | 'linux') => {
     if (os === 'windows') return `${DOWNLOAD_BASE_URL}/Doove-windows-x64.exe`;
-    if (os === 'mac') return `${DOWNLOAD_BASE_URL}/Doove-x64.dmg`;
+    if (os === 'mac') return `${DOWNLOAD_BASE_URL}/Doove-macos-x64.dmg`;
     if (os === 'linux') return `${DOWNLOAD_BASE_URL}/Doove-linux-x64.AppImage`;
     return "https://github.com/taoufikhicham23-stack/Doove-recast/releases/tag/v1.3.10";
   };
