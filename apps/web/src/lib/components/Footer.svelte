@@ -23,12 +23,12 @@
 				{ label: "Documentation", href: "#" },
 				{
 					label: "GitHub",
-					href: "https://github.com/taoufikhicham23-stack/Doove-recast",
+					href: "https://github.com/maboaimana4-source/doove-new",
 					external: true,
 				},
 				{
 					label: "Releases",
-					href: "https://github.com/taoufikhicham23-stack/Doove-recast/releases",
+					href: "https://github.com/maboaimana4-source/doove-new/releases",
 					external: true,
 				},
 				{ label: "Changelog", href: "/changelog" },
@@ -53,7 +53,7 @@
 	];
 
 	const socials = [
-		{ icon: Github, href: "https://github.com/taoufikhicham23-stack/Doove-recast", label: "GitHub" },
+		{ icon: Github, href: "https://github.com/maboaimana4-source/doove-new", label: "GitHub" },
 		{ icon: Twitter, href: "https://x.com/taoufikhicham23-stack", label: "X / Twitter" },
 		{ icon: Mail, href: "mailto:try-doove@gmail.com", label: "Email" },
 	];

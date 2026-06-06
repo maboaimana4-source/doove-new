@@ -6,7 +6,7 @@ const config = {
     supportEmail: "support@nexonauts.com",
     appDomain: "doove.nexonauts.com",
     website: "https://doove.nexonauts.com",
-    github: "https://github.com/taoufikhicham23-stack/Doove-recast",
+    github: "https://github.com/maboaimana4-source/doove-new",
 }
 Object.freeze(config);
 

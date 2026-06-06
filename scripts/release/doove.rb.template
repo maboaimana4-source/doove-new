@@ -5,9 +5,9 @@
 # and pushes the rendered file to `taoufikhicham23-stack/homebrew-doove` as
 # `Casks/doove.rb`. End users then install with
 #
-#     brew install --cask taoufikhicham23-stack/Doove-recast/doove
+#     brew install --cask maboaimana4-source/doove-new/doove
 #
-# or — after a one-time `brew tap taoufikhicham23-stack/Doove-recast` — with the short
+# or — after a one-time `brew tap maboaimana4-source/doove-new` — with the short
 #
 #     brew install --cask doove
 #
@@ -23,21 +23,21 @@ cask "doove" do
   on_arm do
     sha256 "@ARM_SHA256@"
 
-    url "https://github.com/taoufikhicham23-stack/Doove-recast/releases/download/v#{version}/doove_#{version}_aarch64.dmg",
-        verified: "github.com/taoufikhicham23-stack/Doove-recast/"
+    url "https://github.com/maboaimana4-source/doove-new/releases/download/v#{version}/doove_#{version}_aarch64.dmg",
+        verified: "github.com/maboaimana4-source/doove-new/"
   end
 
   # Intel Mac
   on_intel do
     sha256 "@INTEL_SHA256@"
 
-    url "https://github.com/taoufikhicham23-stack/Doove-recast/releases/download/v#{version}/doove_#{version}_x64.dmg",
-        verified: "github.com/taoufikhicham23-stack/Doove-recast/"
+    url "https://github.com/maboaimana4-source/doove-new/releases/download/v#{version}/doove_#{version}_x64.dmg",
+        verified: "github.com/maboaimana4-source/doove-new/"
   end
 
   name "Doove"
   desc "Offline-first desktop screen recorder and editor"
-  homepage "https://github.com/taoufikhicham23-stack/Doove-recast"
+  homepage "https://github.com/maboaimana4-source/doove-new"
 
   # `brew livecheck` follows the `url` and looks for a newer GitHub
   # release tag. Lets users (and the official homebrew/cask bots, if we

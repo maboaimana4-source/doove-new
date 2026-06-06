@@ -46,7 +46,7 @@ See [`.changeset/README.md`](.changeset/README.md) for the full flow.
 - **macOS is now in public beta** — downloadable from the website and GitHub Releases, and installable in one line with Homebrew.
 
 ### Added
-- Homebrew install for macOS through a custom tap. `brew install --cask taoufikhicham23-stack/Doove-recast/doove` fetches the right build for your chip (Apple Silicon or Intel), and Homebrew strips the Gatekeeper quarantine automatically — so the `xattr` "is damaged" workaround isn't needed on this path. Tap once with `brew tap taoufikhicham23-stack/Doove-recast` to install and upgrade by the short `doove` name. (The publishing workflow landed earlier; this is the install path going live for the macOS beta.)
+- Homebrew install for macOS through a custom tap. `brew install --cask maboaimana4-source/doove-new/doove` fetches the right build for your chip (Apple Silicon or Intel), and Homebrew strips the Gatekeeper quarantine automatically — so the `xattr` "is damaged" workaround isn't needed on this path. Tap once with `brew tap maboaimana4-source/doove-new` to install and upgrade by the short `doove` name. (The publishing workflow landed earlier; this is the install path going live for the macOS beta.)
 
 ### Changed
 - Download page and GitHub release notes now lead the macOS section with the Homebrew one-liner alongside the direct `.dmg` downloads, and label macOS as beta so the expectation is set up-front.

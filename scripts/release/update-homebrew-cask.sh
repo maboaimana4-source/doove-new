@@ -108,8 +108,8 @@ fi
 git commit -m "doove ${version}
 
 Auto-published by ${GITHUB_REPOSITORY:-doove}'s release workflow.
-Release: https://github.com/${GITHUB_REPOSITORY:-taoufikhicham23-stack/Doove-recast}/releases/tag/${TAG}"
+Release: https://github.com/${GITHUB_REPOSITORY:-maboaimana4-source/doove-new}/releases/tag/${TAG}"
 git push
 
 echo "✓ Published doove ${version} to ${TAP_REPO}"
-echo "Users can now run: brew install --cask taoufikhicham23-stack/Doove-recast/doove"
+echo "Users can now run: brew install --cask maboaimana4-source/doove-new/doove"

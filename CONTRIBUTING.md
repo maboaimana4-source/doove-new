@@ -32,7 +32,7 @@ OS-level prerequisites), downloads the FFmpeg + ffprobe sidecar binaries into
 produces a debug build to verify the toolchain.
 
 ```bash
-git clone https://github.com/taoufikhicham23-stack/Doove-recast.git
+git clone https://github.com/maboaimana4-source/doove-new.git
 cd doove
 ```
 

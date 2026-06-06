@@ -38,7 +38,7 @@
 		{
 			heading: "The desktop app",
 			paragraphs: [
-				"The Doove desktop application is provided under the project’s open-source license as published in the public repository at github.com/taoufikhicham23-stack/Doove-recast. The source license governs your use of the source code; these Terms govern your use of the hosted Service and any Doove-distributed binaries.",
+				"The Doove desktop application is provided under the project’s open-source license as published in the public repository at github.com/maboaimana4-source/doove-new. The source license governs your use of the source code; these Terms govern your use of the hosted Service and any Doove-distributed binaries.",
 				"The app runs locally. Recordings, project files, and exports stay on your device unless you explicitly share or upload them. When you opt in to a third-party storage integration — for example, the built-in Google Drive uploader — the file you select is sent directly to your account at that provider. Doove does not store the file on our servers.",
 			],
 		},

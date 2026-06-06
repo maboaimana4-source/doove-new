@@ -358,7 +358,7 @@
 			<Reveal variant="up" class="mt-6">
 				<p class="mx-auto max-w-2xl text-balance text-center text-xs leading-relaxed text-muted-foreground">
 					Comparison is based on the publicly documented tiers of each product. Got a correction? Open an issue on
-					<a href="https://github.com/taoufikhicham23-stack/Doove-recast" class="text-foreground underline-offset-2 hover:underline">GitHub</a>.
+					<a href="https://github.com/maboaimana4-source/doove-new" class="text-foreground underline-offset-2 hover:underline">GitHub</a>.
 				</p>
 			</Reveal>
 		</Container>

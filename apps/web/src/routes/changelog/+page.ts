@@ -16,7 +16,7 @@ export const load: PageLoad = async ({ fetch, setHeaders }) => {
 
 	try {
 		const res = await fetch(
-			"https://api.github.com/repos/taoufikhicham23-stack/Doove-recast/releases?per_page=20",
+			"https://api.github.com/repos/maboaimana4-source/doove-new/releases?per_page=20",
 		);
 		if (!res.ok) throw new Error("Failed to fetch releases");
 

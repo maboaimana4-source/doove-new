@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 
 // NOTE: We are now hosting the binaries locally on this server to bypass GitHub Private Repo restrictions.
-const GITHUB_REPO_URL = "https://github.com/taoufikhicham23-stack/Doove-recast";
+const GITHUB_REPO_URL = "https://github.com/maboaimana4-source/doove-new";
 const DOWNLOAD_BASE_URL = "/downloads";
 
 const Navbar = () => {
@@ -19,7 +19,7 @@ const Navbar = () => {
     } else if (ua.includes('linux')) {
       setDownloadUrl(`${DOWNLOAD_BASE_URL}/Doove-linux-x64.AppImage`);
     } else {
-      setDownloadUrl("https://github.com/taoufikhicham23-stack/Doove-recast/releases/tag/v1.3.9");
+      setDownloadUrl("https://github.com/maboaimana4-source/doove-new/releases/tag/v1.3.9");
     }
   }, []);
 
@@ -32,7 +32,7 @@ const Navbar = () => {
         </Link>
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-400">
           <a href="#features" className="hover:text-white transition-colors">Features</a>
-          <a href="https://github.com/taoufikhicham23-stack/Doove-recast" className="flex items-center gap-2 hover:text-white transition-colors">
+          <a href="https://github.com/maboaimana4-source/doove-new" className="flex items-center gap-2 hover:text-white transition-colors">
             <Github size={18} />
             GitHub
           </a>
@@ -92,7 +92,7 @@ const LandingPage = () => {
     if (os === 'windows') return `${DOWNLOAD_BASE_URL}/Doove-windows-x64.exe`;
     if (os === 'mac') return `${DOWNLOAD_BASE_URL}/Doove-macos-x64.dmg`;
     if (os === 'linux') return `${DOWNLOAD_BASE_URL}/Doove-linux-x64.AppImage`;
-    return "https://github.com/taoufikhicham23-stack/Doove-recast/releases/tag/v1.3.10";
+    return "https://github.com/maboaimana4-source/doove-new/releases/tag/v1.3.10";
   };
 
   return (
@@ -279,7 +279,7 @@ const LandingPage = () => {
           </div>
           <p>© 2026 Doove Team. All rights reserved.</p>
           <div className="flex gap-6">
-            <a href="https://github.com/taoufikhicham23-stack/Doove-recast" className="hover:text-white transition-colors">GitHub</a>
+            <a href="https://github.com/maboaimana4-source/doove-new" className="hover:text-white transition-colors">GitHub</a>
             <a href="#" className="hover:text-white transition-colors">Discord</a>
             <a href="#" className="hover:text-white transition-colors">Terms</a>
           </div>

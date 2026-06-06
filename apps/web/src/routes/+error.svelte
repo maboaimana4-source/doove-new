@@ -211,7 +211,7 @@
 		<p class="mt-8 text-center text-[11px] text-muted-foreground">
 			Still stuck?
 			<a
-				href="https://github.com/taoufikhicham23-stack/Doove-recast/issues/new"
+				href="https://github.com/maboaimana4-source/doove-new/issues/new"
 				target="_blank"
 				rel="noopener noreferrer"
 				class="inline-flex items-center gap-1 font-semibold text-foreground transition-colors hover:text-primary"
