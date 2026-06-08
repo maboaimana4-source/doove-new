@@ -93,7 +93,7 @@ fn extensions_dir(app: &AppHandle) -> Result<PathBuf, String> {
 
 fn http_client() -> Result<reqwest::Client, String> {
     reqwest::Client::builder()
-        .user_agent("recast-desktop")
+        .user_agent("doove-desktop")
         .build()
         .map_err(|e| format!("client: {e}"))
 }
