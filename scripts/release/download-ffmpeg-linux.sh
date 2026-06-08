@@ -18,10 +18,6 @@ triple="${1:?Rust target triple required as arg 1}"
 dest="${2:?Destination directory required as arg 2}"
 
 mkdir -p "$dest"
-curl -L "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz" -o ffmpeg.tar.xz
-mkdir -p ffmpeg-extract
-tar -xf ffmpeg.tar.xz -C ffmpeg-extract --strip-components=1
-cp ffmpeg-extract/ffmpeg "$dest/ffmpeg-$triple"
-cp ffmpeg-extract/ffprobe "$dest/ffprobe-$triple"
+curl -L "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-linux-x64" -o "$dest/ffmpeg-$triple"
+curl -L "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffprobe-linux-x64" -o "$dest/ffprobe-$triple"
 chmod +x "$dest/ffmpeg-$triple" "$dest/ffprobe-$triple"
-rm -rf ffmpeg.tar.xz ffmpeg-extract
