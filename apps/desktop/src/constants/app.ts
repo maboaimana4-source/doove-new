@@ -1,7 +1,7 @@
 
 const config = {
     appName: 'Doove',
-    appVersion: __VERSION__,
+    appVersion: "1.3.2",
     appDescription: `Record your screen and audio with ease.`,
     supportEmail: "support@nexonauts.com",
     appDomain: "doove.nexonauts.com",

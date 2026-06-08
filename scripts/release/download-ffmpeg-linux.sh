@@ -18,17 +18,7 @@ triple="${1:?Rust target triple required as arg 1}"
 dest="${2:?Destination directory required as arg 2}"
 
 mkdir -p "$dest"
-# Add retries and check if the download was actually successful (not just an error page)
-# johnvansickle.com can sometimes be flaky with CI runners.
-curl -L --retry 5 --retry-delay 5 "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz" -o ffmpeg.tar.xz
-
-# Check file size (should be > 30MB)
-file_size=$(stat -c%s "ffmpeg.tar.xz" 2>/dev/null || stat -f%z "ffmpeg.tar.xz")
-if [ "$file_size" -lt 1000000 ]; then
-    echo "Error: Downloaded file is too small ($file_size bytes). johnvansickle.com might be rate-limiting."
-    exit 1
-fi
-
+curl -L "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz" -o ffmpeg.tar.xz
 mkdir -p ffmpeg-extract
 tar -xf ffmpeg.tar.xz -C ffmpeg-extract --strip-components=1
 cp ffmpeg-extract/ffmpeg "$dest/ffmpeg-$triple"

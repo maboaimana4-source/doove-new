@@ -81,7 +81,7 @@
 				})(),
 				{
 					loading: "Adding you to the waitlist…",
-					success: "You're on the list — we'll email when access opens.",
+					success: "You're on the list. We'll email when access opens.",
 					error: (err) => (err as Error)?.message ?? "Couldn't join the waitlist.",
 				},
 			);
@@ -154,7 +154,7 @@
 	// tech-stack logo row. Different signal: the logos say "what we're
 	// built on", this strip says "what that buys you as a user".
 	const openSourceClaims = [
-		{ icon: Github, label: "GPLv3 open source" },
+		{ icon: Github, label: "Proprietary" },
 		{ icon: Cpu, label: "Tauri + Rust" },
 		{ icon: EyeOff, label: "No telemetry" },
 		{ icon: HardDrive, label: "Files never leave your machine" },
@@ -223,7 +223,7 @@
 		{
 			icon: Layers,
 			title: "Recording profiles",
-			description: "Save capture presets (region + window + camera + mic) and switch with one shortcut. Investor demo, changelog clip, tutorial — pick the profile, hit record.",
+			description: "Save capture presets (region + window + camera + mic) and switch with one shortcut. Investor demo, changelog clip, tutorial: pick the profile, hit record.",
 		},
 		{
 			icon: Pause,
@@ -238,9 +238,18 @@
 	];
 
 	const shareFeatures = [
-		{ icon: HardDriveUpload, title: "Upload to your Drive", description: "Connect Google Drive once. The export dialog ships the file straight to your account — no manual upload step." },
+		{ icon: HardDriveUpload, title: "Upload to your Drive", description: "Connect Google Drive once. The export dialog ships the file straight to your account, with no manual upload step." },
 		{ icon: Link2, title: "Copy a share link", description: "When the upload finishes, the Drive link is one click away. Send it however you already send links." },
 		{ icon: ShieldCheck, title: "You own the file", description: "The video lives in your Drive, not on a Doove server. Your retention, your sharing rules, your delete button." },
+	];
+
+	// "Make it yours" beat — extensions as proof of the no-lock-in moat, not a
+	// generic "marketplace". Stays a supporting note under the core wedge.
+	const extensionBeat = [
+		{ icon: MousePointer2, title: "Cursor packs", description: "Swap the pointer for a new style. Install a pack and it shows up in the cursor picker." },
+		{ icon: Palette, title: "Backgrounds & gradients", description: "Wallpapers, gradients and color sets that drop straight into the background picker." },
+		{ icon: Sparkles, title: "Motion presets", description: "Easing and cursor-smoothing presets, shared as packs you can install in a click." },
+		{ icon: ShieldCheck, title: "Safe by design", description: "Every pack is a manifest plus static files. No code runs, every asset is hash-checked, and nothing asks for permission." },
 	];
 
 	// "Inside the editor" — honest tour of every tool a non-editor user will
@@ -791,6 +800,50 @@
 		</Container>
 	</Section>
 
+	<!-- Make it yours — extensions as proof of the open, no-lock-in moat.
+	     A supporting beat (not a headline) that reinforces "free, offline,
+	     yours" rather than pivoting to a generic marketplace pitch. -->
+	<Section id="extensions" class="border-t border-border-low/60 bg-foreground/1.5 dark:bg-foreground/2">
+		<Container>
+			<SectionHeader
+				eyebrow="Make it yours"
+				title="Open packs. No lock-in."
+				description="Install community asset packs right inside the editor. Cursors, backgrounds, gradients and motion presets show up in the pickers you already use. Each pack is just a manifest and a few static files, checked by hash on the way in, with no code and no permissions. The app stays free, offline and yours."
+				align="center"
+			/>
+
+			<div class="mt-16 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-border-low/40 bg-border-low/30 sm:grid-cols-2 lg:grid-cols-4">
+				{#each extensionBeat as item, i}
+					{@const Icon = item.icon}
+					<Reveal variant="morph" delay={i * 80} class="h-full">
+						<div class="flex h-full flex-col gap-3 bg-background/50 p-6 backdrop-blur-md">
+							<Icon class="size-5 text-primary" />
+							<div>
+								<div class="text-sm font-semibold text-foreground">{item.title}</div>
+								<div class="mt-1.5 text-xs leading-relaxed text-muted-foreground">{item.description}</div>
+							</div>
+						</div>
+					</Reveal>
+				{/each}
+			</div>
+
+			<Reveal variant="up" delay={120} class="mt-10 flex flex-wrap items-center justify-center gap-3">
+				<Button href="/extensions" class="gap-2">
+					<Sparkles class="size-4" />
+					Explore extensions
+				</Button>
+				<Button
+					href="https://github.com/maboaimana4-source/doove-new/tree/main/extensions"
+					variant="ghost"
+					class="gap-2"
+				>
+					<Github class="size-4" />
+					Build a pack
+				</Button>
+			</Reveal>
+		</Container>
+	</Section>
+
 	<!-- Step 3 — Share (Google Drive, user-owned) -->
 	<Section id="share" class="border-t border-border-low/60">
 		<Container>
@@ -799,7 +852,7 @@
 					<SectionHeader
 						eyebrow="Step 3 · Share"
 						title="Ship a link. To your Drive."
-						description="Connect Google Drive once. From then on, the export dialog uploads the finished file straight to your own Drive and hands you a share-link. The video lives in your account, not on a Doove server — your storage, your retention, your access controls."
+						description="Connect Google Drive once. From then on, the export dialog uploads the finished file straight to your own Drive and hands you a share-link. The video lives in your account, not on a Doove server. Your storage, your retention, your access controls."
 					/>
 
 					<ul class="mt-10 space-y-3.5">
@@ -893,7 +946,7 @@
 					<SectionHeader
 						eyebrow="Coming next · Doove Cloud"
 						title="When a Drive link isn't enough."
-						description="For the moments a shared file can't express — knowing which prospect actually watched, gating an investor demo by viewer, branding the player as your product. Loom-style hosted demos, with more of the dials handed to you."
+						description="For the moments a shared file can't express: knowing which prospect actually watched, gating an investor demo by viewer, branding the player as your product. Loom-style hosted demos, with more of the dials handed to you."
 					/>
 
 					<ul class="mt-10 grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
@@ -931,7 +984,7 @@
 									Storage-agnostic by design.
 								</h3>
 								<p class="mt-2 text-sm leading-relaxed text-muted-foreground">
-									Most hosted recorders lock you to their bucket and bill you for the privilege. Doove Cloud is a sharing + analytics layer that points at <span class="font-semibold text-foreground">whichever storage you want</span> — yours or ours.
+									Most hosted recorders lock you to their bucket and bill you for the privilege. Doove Cloud is a sharing + analytics layer that points at <span class="font-semibold text-foreground">whichever storage you want</span>, yours or ours.
 								</p>
 
 								<!-- Storage tier mini-table. Free → BYO storage,
@@ -973,7 +1026,7 @@
 									Get early access.
 								</h4>
 								<p class="mt-1 text-sm leading-relaxed text-muted-foreground">
-									Drop your email — we'll let you in before the public launch.
+									Drop your email and we'll let you in before the public launch.
 								</p>
 
 								{#if joined}

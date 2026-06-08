@@ -177,7 +177,7 @@
 							<span class="text-sm text-muted-foreground">forever</span>
 						</div>
 						<p class="mt-4 text-sm leading-relaxed text-muted-foreground">
-							The whole recorder and editor, offline. No account, no telemetry, GPLv3 open source.
+							The whole recorder and editor, offline. No account, no telemetry, Proprietary.
 						</p>
 						<ul class="mt-6 space-y-3">
 							{#each [

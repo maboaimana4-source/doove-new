@@ -4,7 +4,7 @@
 # Downloads the just-published DMGs from the GitHub release, computes
 # their SHA256s, renders `doove.rb.template` with the version + hashes
 # substituted, and pushes the result to the
-# `taoufikhicham23-stack/homebrew-doove` tap repo so Mac users get the new
+# `kanakkholwal/homebrew-doove` tap repo so Mac users get the new
 # version on their next `brew upgrade` (or `brew install --cask`).
 #
 # Skips silently when HOMEBREW_TAP_TOKEN is unset so the release
@@ -21,7 +21,7 @@
 #                         unset, the script no-ops with a notice. Set
 #                         it as a repository secret in the doove repo.
 #   TAP_REPO            — owner/repo for the tap (default
-#                         "taoufikhicham23-stack/homebrew-doove"). Override
+#                         "kanakkholwal/homebrew-doove"). Override
 #                         only if forking the tap location.
 
 set -euo pipefail
@@ -31,7 +31,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$REPO_ROOT"
 
 : "${TAG:?TAG is required (e.g. v1.2.3)}"
-TAP_REPO="${TAP_REPO:-taoufikhicham23-stack/homebrew-doove}"
+TAP_REPO="${TAP_REPO:-kanakkholwal/homebrew-doove}"
 
 if [[ -z "${HOMEBREW_TAP_TOKEN:-}" ]]; then
   echo "::notice::HOMEBREW_TAP_TOKEN not set — skipping Homebrew Cask publish."

@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "doove",
-  "version": "0.0.0-0",
+  "version": "1.3.2",
   "identifier": "com.nexonauts.doove",
   "build": {
     "frontendDist": "../build",
@@ -46,7 +46,7 @@
       "deb",
       "dmg"
     ],
-    "publisher": "Doove",
+    "publisher": "Nexonauts",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -68,7 +68,7 @@
     "linux": {
       "appimage": {}
     },
-    "createUpdaterArtifacts": false,
+    "createUpdaterArtifacts": true,
     "fileAssociations": [
       {
         "ext": ["doove"],

@@ -48,7 +48,7 @@ const REVOKE_URL: &str = "https://oauth2.googleapis.com/revoke";
 const USERINFO_URL: &str = "https://www.googleapis.com/oauth2/v3/userinfo";
 const DRIVE_API: &str = "https://www.googleapis.com/drive/v3";
 const DRIVE_UPLOAD: &str = "https://www.googleapis.com/upload/drive/v3/files";
-const DOOVE_FOLDER_NAME: &str = "Doove";
+const RECAST_FOLDER_NAME: &str = "Doove";
 const SCOPES: &str =
     "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email";
 /// 8 MB per chunk — Drive's resumable spec requires multiples of 256 KB and
@@ -847,7 +847,7 @@ async fn find_or_create_doove_folder(
     // Drive's q syntax treats single quotes as string delimiters.
     let q = format!(
         "name='{}' and mimeType='application/vnd.google-apps.folder' and trashed=false",
-        DOOVE_FOLDER_NAME
+        RECAST_FOLDER_NAME
     );
     let resp = client
         .get(format!("{DRIVE_API}/files"))
@@ -889,7 +889,7 @@ async fn find_or_create_doove_folder(
         .post(format!("{DRIVE_API}/files"))
         .header(header::AUTHORIZATION, format!("Bearer {access_token}"))
         .json(&serde_json::json!({
-            "name": DOOVE_FOLDER_NAME,
+            "name": RECAST_FOLDER_NAME,
             "mimeType": "application/vnd.google-apps.folder",
         }))
         .send()

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { DropdownMenu as DropdownMenuPrimitive } from "bits-ui";
-	import { IconChevronRight } from '@tabler/icons-svelte';
+	import { ChevronRight } from '@lucide/svelte';
 	import { cn } from "@doove/ui/utils";
 
 	let {
@@ -25,5 +25,5 @@
 	{...restProps}
 >
 	{@render children?.()}
-	<IconChevronRight class="ml-auto" />
+	<ChevronRight class="ml-auto" />
 </DropdownMenuPrimitive.SubTrigger>

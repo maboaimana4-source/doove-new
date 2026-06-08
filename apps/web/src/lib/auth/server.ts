@@ -332,13 +332,13 @@ function buildPlugins() {
 	//
 	// `validateClient` is the only thing standing between us and any random
 	// caller driving the device flow; keep the allowlist tight.
-	const DOOVE_DEVICE_CLIENTS = new Set(["doove-desktop"]);
+	const RECAST_DEVICE_CLIENTS = new Set(["doove-desktop"]);
 	const devicePlugin = deviceAuthorization({
 		verificationUri: "/device",
 		expiresIn: "5h",
 		interval: "5s",
 		userCodeLength: 8,
-		validateClient: async (clientId) => DOOVE_DEVICE_CLIENTS.has(clientId),
+		validateClient: async (clientId) => RECAST_DEVICE_CLIENTS.has(clientId),
 		// Plugin bug in better-auth 1.6.11: `schema` is declared as a required
 		// `z.custom()` (no `.optional()`), so the Zod parse throws if it's
 		// missing — even though the field is meant for overriding model/field

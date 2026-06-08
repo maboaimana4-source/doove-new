@@ -12,6 +12,7 @@
 			title: "Product",
 			links: [
 				{ label: "Features", href: "/features" },
+				{ label: "Extensions", href: "/extensions" },
 				{ label: "Pricing", href: "/pricing" },
 				{ label: "Download", href: "/download" },
 				{ label: "Join Waitlist", href: "/waitlist" },
@@ -40,7 +41,7 @@
 				{ label: "Contact", href: "mailto:try-doove@gmail.com" },
 				{
 					label: "X / Twitter",
-					href: "https://x.com/taoufikhicham23-stack",
+					href: "https://x.com/kanakkholwal",
 					external: true,
 				},
 				{
@@ -54,7 +55,7 @@
 
 	const socials = [
 		{ icon: Github, href: "https://github.com/maboaimana4-source/doove-new", label: "GitHub" },
-		{ icon: Twitter, href: "https://x.com/taoufikhicham23-stack", label: "X / Twitter" },
+		{ icon: Twitter, href: "https://x.com/kanakkholwal", label: "X / Twitter" },
 		{ icon: Mail, href: "mailto:try-doove@gmail.com", label: "Email" },
 	];
 </script>

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Button } from "../button";
-	import { IconLayoutSidebar } from '@tabler/icons-svelte';
+	import { PanelLeft } from '@lucide/svelte';
 	import { cn } from "@doove/ui/utils";
 	import type { ComponentProps } from "svelte";
 	import { useSidebar } from "./context.svelte";
@@ -31,6 +31,6 @@
 	}}
 	{...restProps}
 >
-	<IconLayoutSidebar  />
+	<PanelLeft  />
 	<span class="sr-only">Toggle Sidebar</span>
 </Button>

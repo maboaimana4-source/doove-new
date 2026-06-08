@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { Checkbox as CheckboxPrimitive } from "bits-ui";
 	import { cn, type WithoutChildrenOrChild } from "@doove/ui/utils";
-	import { IconCheck } from '@tabler/icons-svelte';
-	import { IconMinus } from '@tabler/icons-svelte';
+	import { Check } from '@lucide/svelte';
+	import { Minus } from '@lucide/svelte';
 
 	let {
 		ref = $bindable(null),
@@ -30,9 +30,9 @@
 			class="[&>svg]:size-3.5 grid place-content-center text-current transition-none"
 		>
 			{#if checked}
-				<IconCheck  />
+				<Check  />
 			{:else if indeterminate}
-				<IconMinus  />
+				<Minus  />
 			{/if}
 		</div>
 	{/snippet}

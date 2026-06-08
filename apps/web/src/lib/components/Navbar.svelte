@@ -9,6 +9,7 @@
 			variant: "default" as const,
 			links: [
 				{ label: "Features", href: "/features" },
+				{ label: "Extensions", href: "/extensions" },
 				{ label: "Pricing", href: "/pricing" },
 				{ label: "Cloud Waitlist", href: "/waitlist" },
 			],
@@ -55,7 +56,7 @@
 			<a
 				href="/"
 				class="group/logo flex items-center gap-2.5 transition-transform active:scale-[0.97]"
-				aria-label="Doove — home"
+				aria-label="Doove home"
 			>
 				<span
 					class="grid size-7 place-items-center rounded-lg bg-foreground p-1 text-background shadow-craft-sm transition-transform group-hover/logo:rotate-[-4deg]"

@@ -33,4 +33,3 @@ Thumbs.db
 */.turbo
 
 *.turbo/turbo-build.log
-apps/landing/dist/downloads/

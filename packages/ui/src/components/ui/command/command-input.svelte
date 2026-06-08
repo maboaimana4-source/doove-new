@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { cn } from "@doove/ui/utils";
-	import { IconSearch } from "@tabler/icons-svelte";
+	import { Search } from "@lucide/svelte";
 	import { Command as CommandPrimitive } from "bits-ui";
 	import * as InputGroup from "../input-group";
 
@@ -33,7 +33,7 @@
 			bind:value
 		/>
 		<InputGroup.Addon>
-			<IconSearch class="size-4 shrink-0 opacity-50" />
+			<Search class="size-4 shrink-0 opacity-50" />
 		</InputGroup.Addon>
 	</InputGroup.Root>
 </div>

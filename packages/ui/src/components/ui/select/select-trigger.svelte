@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Select as SelectPrimitive } from "bits-ui";
 	import { cn, type WithoutChild } from "@doove/ui/utils";
-	import { IconSelector } from '@tabler/icons-svelte';
+	import { ChevronsUpDown } from '@lucide/svelte';
 
 	let {
 		ref = $bindable(null),
@@ -25,5 +25,5 @@
 	{...restProps}
 >
 	{@render children?.()}
-	<IconSelector class="text-muted-foreground size-4 pointer-events-none" />
+	<ChevronsUpDown class="text-muted-foreground size-4 pointer-events-none" />
 </SelectPrimitive.Trigger>

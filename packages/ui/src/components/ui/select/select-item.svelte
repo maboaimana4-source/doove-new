@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Select as SelectPrimitive } from "bits-ui";
 	import { cn, type WithoutChild } from "@doove/ui/utils";
-	import { IconCheck } from '@tabler/icons-svelte';
+	import { Check } from '@lucide/svelte';
 
 	let {
 		ref = $bindable(null),
@@ -26,7 +26,7 @@
 	{#snippet children({ selected, highlighted })}
 		<span class="absolute end-2 flex size-3.5 items-center justify-center">
 			{#if selected}
-				<IconCheck class="cn-select-item-indicator-icon" />
+				<Check class="cn-select-item-indicator-icon" />
 			{/if}
 		</span>
 		{#if childrenProp}

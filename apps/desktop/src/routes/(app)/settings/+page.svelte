@@ -1,8 +1,10 @@
 <script lang="ts">
+  import { page } from "$app/state";
   import Logo from "$components/logo.svelte";
   import CloudEndpoint from "$components/settings/CloudEndpoint.svelte";
   import CloudSignIn from "$components/settings/CloudSignIn.svelte";
   import DeviceCapabilities from "$components/settings/DeviceCapabilities.svelte";
+  import DiagnosticsPanel from "$components/settings/DiagnosticsPanel.svelte";
   import GoogleDriveConnection from "$components/settings/GoogleDriveConnection.svelte";
   import { config } from "$constants/app";
   import { getOutputDir, setOutputDir } from "$lib/ipc";
@@ -23,6 +25,7 @@
     Server,
     Settings as SettingsIcon,
     Shield,
+    ShieldCheck,
     SlidersHorizontal as SlidersIcon,
     Sparkles,
     Sun,
@@ -51,6 +54,7 @@
     type CountdownSeconds,
   } from "$lib/stores/recording-countdown.svelte";
   import { safeStorage } from "@doove/ui/persisted-state";
+  import { licenseStore, verifyLicense } from "$lib/licensing.svelte";
 
   type Theme = "light" | "dark" | "system";
   type EditorBehavior = "navigate" | "new-window";
@@ -88,6 +92,18 @@
     );
     countdown = recordingCountdown.value;
   });
+
+  async function handleVerifyLicense() {
+    if (!licenseKey) return;
+    isVerifying = true;
+    const success = await verifyLicense(licenseKey);
+    isVerifying = false;
+    if (success) {
+      toast.success("Licence Doove Pro activée !");
+    } else {
+      toast.error("Clé de licence invalide ou erreur réseau.");
+    }
+  }
 
   function toggleProfilesEnabled() {
     const next = !profilesStore.enabled;
@@ -228,16 +244,6 @@
       </p>
     </header>
 
-    <!-- Tabs, grouped by concern:
-           General      — appearance, window behavior + telemetry consent
-           Recording    — storage, editor, capture profiles (daily-use)
-           Cloud        — Doove Cloud + Google Drive (network integrations)
-           Experimental — opt-in unfinished features
-           About        — version, links, and device/encoder diagnostics
-         Telemetry lives under General (it's a small, two-toggle consent
-         block, not its own surface); Experimental gets a dedicated tab so
-         its growing flag list doesn't crowd anything else.
-         Each panel slides/fades in via tw-animate-css inside Tabs.Content. -->
     <div
       in:fly={{ y: 12, duration: 320, delay: 80, easing: cubicOut }}
       class="flex min-w-0 flex-col gap-6"
@@ -264,7 +270,6 @@
             <span class="text-[12px] font-semibold">Licensing</span>
           </Tabs.Trigger>
           <Tabs.Trigger value="cloud" class="gap-1.5 px-2">
-
             <Cloud class="size-3.5" />
             <span class="text-[12px] font-semibold">Cloud</span>
           </Tabs.Trigger>
@@ -278,10 +283,6 @@
           </Tabs.Trigger>
         </Tabs.List>
 
-        <!-- Each Tabs.Content carries its own subtle slide-in/fade-in via
-             tw-animate-css (defined in @doove/ui's tabs-content.svelte) —
-             no need for custom Svelte transitions. Panels not matching the
-             active value unmount, so we don't pay layout cost. -->
         <Tabs.Content value="recording" class="flex min-w-0 flex-col gap-8">
               <!-- Storage / Output directory -->
               <section id="settings-storage" class="flex flex-col gap-3">
@@ -329,10 +330,7 @@
                 </div>
               </section>
 
-              <!-- Countdown before recording. Read by the recording panel
-                   (panel/+page.svelte) via the shared COUNTDOWN_KEY localStorage
-                   entry. Recording profiles can override it per-profile for
-                   quick access. -->
+              <!-- Countdown before recording -->
               <section id="settings-countdown" class="flex flex-col gap-3">
                 <div class="px-1">
                   <h2
@@ -536,17 +534,17 @@
                 </div>
                 <div>
                   <h3 class="text-sm font-bold">
-                    {licenseStore.value.isPro ? 'Doove Pro Activé' : 'Version Gratuite'}
+                    {licenseStore.current.isPro ? 'Doove Pro Activé' : 'Version Gratuite'}
                   </h3>
                   <p class="text-[12px] text-muted-foreground">
-                    {licenseStore.value.isPro 
-                      ? `Licence active pour ${licenseStore.value.email}` 
+                    {licenseStore.current.isPro 
+                      ? `Licence active pour ${licenseStore.current.email}` 
                       : 'Limite de 3 enregistrements par jour et 5 minutes par vidéo.'}
                   </p>
                 </div>
               </div>
 
-              {#if !licenseStore.value.isPro}
+              {#if !licenseStore.current.isPro}
                 <div class="mt-2 flex flex-col gap-3">
                   <div class="flex flex-col gap-1.5">
                     <label for="license-key" class="text-[11px] font-medium text-muted-foreground/90">
@@ -582,7 +580,7 @@
                     variant="outline" 
                     size="sm"
                     onclick={() => {
-                      licenseStore.value = { isPro: false, key: null, email: null };
+                      licenseStore.current = { isPro: false, key: null, email: null };
                       toast.info("Déconnexion de la licence effectuée.");
                     }}
                   >
@@ -595,11 +593,6 @@
         </Tabs.Content>
 
         <Tabs.Content value="cloud" class="flex min-w-0 flex-col gap-8">
-              <!-- Doove Cloud sign-in. The desktop app is fully usable without
-                   it; Cloud unlocks the Loom-style sharing layer (instant
-                   share links, viewer analytics, password protection,
-                   custom branding). Free tier ships 10 active links with a
-                   watermark; paid tier removes both. See [[positioning_plan]]. -->
               <section id="settings-cloud" class="flex flex-col gap-3">
                 <div class="px-1">
                   <h2
@@ -621,13 +614,6 @@
                 </div>
               </section>
 
-              <!-- Self-hosting server endpoint. Gated behind the `selfHosting`
-                   experimental flag (Settings → Experimental) because Doove
-                   Cloud's server isn't shipped yet — there's nothing to point
-                   at by default, so this stays hidden for everyone except
-                   early self-hosters who opt in. When enabled, the Rust
-                   resolver validates the URL and falls back to the bundled
-                   default, so a bad value can't break sign-in. -->
               {#if experimentalStore.isEnabled("selfHosting")}
                 <section id="settings-cloud-endpoint" class="flex flex-col gap-3">
                   <div class="px-1">
@@ -656,11 +642,6 @@
                 </section>
               {/if}
 
-              <!-- Google Drive connection. Independent of the cloud Account
-                   section above: signing into Doove Cloud and connecting
-                   Google Drive are separate authentications. Both belong on
-                   the Cloud tab since they're both external integrations
-                   that take exports off this machine. -->
               <section id="settings-google-drive" class="flex flex-col gap-3">
                 <div class="px-1">
                   <h2
@@ -788,10 +769,7 @@
                 </div>
               </section>
 
-              <!-- Privacy & Telemetry. Two independent, locally-stored opt-ins:
-                   usage analytics (strictly opt-in, default off) and crash
-                   reports (default on). Both anonymous; crash reports are
-                   PII-scrubbed before leaving the machine. -->
+              <!-- Privacy & Telemetry -->
               <section id="settings-privacy" class="flex flex-col gap-3">
                 <div class="px-1">
                   <h2
@@ -878,10 +856,11 @@
                   </div>
                 </div>
               </section>
+
+              <DiagnosticsPanel />
         </Tabs.Content>
 
         <Tabs.Content value="experimental" class="flex min-w-0 flex-col gap-8">
-              <!-- Experimental features -->
               <section id="settings-experimental" class="flex flex-col gap-3">
                 <div class="px-1">
                   <h2
@@ -941,7 +920,6 @@
         </Tabs.Content>
 
         <Tabs.Content value="about" class="flex min-w-0 flex-col gap-8">
-              <!-- About -->
               <section id="settings-about" class="flex flex-col gap-3">
                 <div class="px-1">
                   <h2
@@ -1008,10 +986,6 @@
                 </div>
               </section>
 
-              <!-- Device & diagnostics. Encoder availability is probed live
-                   against this machine's GPU (not just "compiled in"), so the
-                   matrix reflects what Doove can actually use here — handy in
-                   bug reports and for users wondering why capture is on CPU. -->
               <section id="settings-device" class="flex flex-col gap-3">
                 <div class="px-1">
                   <h2

@@ -8,7 +8,7 @@
 	import SheetPortal from "./sheet-portal.svelte";
 	import SheetOverlay from "./sheet-overlay.svelte";
 	import { Button } from "../button";
-	import { IconX } from '@tabler/icons-svelte';
+	import { X } from '@lucide/svelte';
 	import { cn, type WithoutChildrenOrChild } from "@doove/ui/utils";
 	import type { ComponentProps } from "svelte";
 
@@ -56,7 +56,7 @@
 			<SheetPrimitive.Close data-slot="sheet-close">
 				{#snippet child({ props })}
 					<Button variant="ghost" class="absolute top-3 right-3" size="icon-sm" {...props}>
-						<IconX  />
+						<X  />
 						<span class="sr-only">Close</span>
 					</Button>
 				{/snippet}

@@ -21,7 +21,7 @@ export const usageStore = persisted<RecordingSession[]>("doove-usage", []);
 
 export function getTodayRecordings() {
     const today = new Date().setHours(0, 0, 0, 0);
-    return usageStore.value.filter(s => new Date(s.timestamp).setHours(0, 0, 0, 0) === today);
+    return usageStore.current.filter(s => new Date(s.timestamp).setHours(0, 0, 0, 0) === today);
 }
 
 export async function verifyLicense(key: string): Promise<boolean> {
@@ -33,7 +33,7 @@ export async function verifyLicense(key: string): Promise<boolean> {
         });
         const data = await response.json();
         if (data.success) {
-            licenseStore.value = {
+            licenseStore.current = {
                 isPro: true,
                 key: key,
                 email: data.email || null,
@@ -47,7 +47,7 @@ export async function verifyLicense(key: string): Promise<boolean> {
 }
 
 export function canRecord(): { allowed: boolean; reason?: string } {
-    if (licenseStore.value.isPro) return { allowed: true };
+    if (licenseStore.current.isPro) return { allowed: true };
 
     const todayRecordings = getTodayRecordings();
     if (todayRecordings.length >= 3) {
@@ -57,7 +57,7 @@ export function canRecord(): { allowed: boolean; reason?: string } {
 }
 
 export function checkDuration(durationMs: number): { allowed: boolean; reason?: string } {
-    if (licenseStore.value.isPro) return { allowed: true };
+    if (licenseStore.current.isPro) return { allowed: true };
 
     if (durationMs > 5 * 60 * 1000) {
         return { allowed: false, reason: "Les enregistrements gratuits sont limités à 5 minutes. Passez à Doove Pro pour un accès illimité !" };
@@ -66,5 +66,5 @@ export function checkDuration(durationMs: number): { allowed: boolean; reason?: 
 }
 
 export function addRecording(durationMs: number) {
-    usageStore.value = [...usageStore.value, { timestamp: Date.now(), durationMs }];
+    usageStore.current = [...usageStore.current, { timestamp: Date.now(), durationMs }];
 }

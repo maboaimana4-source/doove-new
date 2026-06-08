@@ -128,7 +128,7 @@
 			cap: "Required",
 		},
 		{
-			feature: "Open source",
+			feature: "Saas",
 			doove: "GPLv3",
 			loom: "Closed",
 			cap: "AGPL",
@@ -232,7 +232,7 @@
 		},
 		{
 			icon: Github,
-			title: "GPLv3 open source",
+			title: "Proprietary",
 			description: "Source on GitHub. Dual licensing available for closed-source redistribution.",
 		},
 	];

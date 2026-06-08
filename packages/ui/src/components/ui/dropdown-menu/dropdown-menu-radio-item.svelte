@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { DropdownMenu as DropdownMenuPrimitive } from "bits-ui";
-	import { IconCheck } from '@tabler/icons-svelte';
+	import { Check } from '@lucide/svelte';
 	import { cn, type WithoutChild } from "@doove/ui/utils";
 
 	let {
@@ -26,7 +26,7 @@
 			data-slot="dropdown-menu-radio-item-indicator"
 		>
 			{#if checked}
-				<IconCheck  />
+				<Check  />
 			{/if}
 		</span>
 		{@render childrenProp?.({ checked })}

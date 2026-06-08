@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { cn } from "@doove/ui/utils";
-	import { IconLoader } from '@tabler/icons-svelte';
+	import { Loader2 } from '@lucide/svelte';
 	import type { SVGAttributes } from "svelte/elements";
 
 	let {
@@ -15,4 +15,4 @@
 	}: SVGAttributes<SVGSVGElement> = $props();
 </script>
 
-<IconLoader {role} name={name === null ? undefined : name} color={color === null ? undefined : color} stroke={stroke === null ? undefined : stroke} aria-label={ariaLabel} class={cn("size-4 animate-spin", className)} {...restProps} />
+<Loader2 {role} name={name === null ? undefined : name} color={color === null ? undefined : color} stroke={stroke === null ? undefined : stroke} aria-label={ariaLabel} class={cn("size-4 animate-spin", className)} {...restProps} />

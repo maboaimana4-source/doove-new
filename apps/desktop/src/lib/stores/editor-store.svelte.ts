@@ -5,6 +5,10 @@
 
 import type { CursorSampleLike } from '../cursor/smoothing';
 import { EASE, type Easing } from '../easing/cubic-bezier';
+import { log } from '../logger';
+// Narrow import (not `$lib/registry`) so the registry's `builtins` side-effect
+// — which pulls this store's catalogs — can't form an import cycle.
+import { resolveBackgroundWireValue } from '../registry/resolve';
 import { totalCutDuration, type CutSource, type TimelineCut } from '../timeline/cuts';
 
 export type BackgroundType = 'wallpaper' | 'image' | 'color' | 'gradient';
@@ -210,10 +214,19 @@ export const DEFAULT_ANNOTATION_FILL = "rgba(59,130,246,0.20)";
  */
 export type CursorStyleId = 'dot' | 'macos' | 'windows' | 'outline' | 'target';
 
+/**
+ * Stored cursor selection: a built-in {@link CursorStyleId} or an
+ * `ext:<extId>:<localId>` id contributed by an installed cursor pack. Kept as a
+ * widened string (the `string & {}` trick preserves built-in autocomplete)
+ * because extension ids can't be enumerated at compile time. Resolution +
+ * graceful fallback (unknown id → soft dot) lives in `lib/registry/resolve.ts`.
+ */
+export type StoredCursorId = CursorStyleId | (string & {});
+
 export interface CursorSettings {
 	enabled: boolean;
 	size: number; // 1-5 scale
-	style: CursorStyleId;
+	style: StoredCursorId;
 	smoothing: number; // 0-100 → Gaussian σ in ms (0 = raw capture, 100 ≈ 150 ms)
 	snapToClicks: boolean; // anchor smoothed path to exact click x/y around mouse-down
 	snapWindowMs: number; // half-width (ms) of the snap anchor — 0..200
@@ -441,7 +454,7 @@ export interface EditorRenderState {
 	 * `outline` / `target`). Optional for backwards compatibility — projects
 	 * saved before this field landed default to `dot` on load.
 	 */
-	cursorStyle?: CursorStyleId;
+	cursorStyle?: StoredCursorId;
 	cursorSmoothing: number;
 	cursorSnapToClicks: boolean;
 	cursorSnapWindowMs: number;
@@ -561,28 +574,115 @@ export function aspectRatio(a: OutputAspect): number | null {
 
 export type EditorWindowBehavior = 'navigate' | 'new-window';
 
-export type PanelTab = 'background' | 'focus' | 'annotations' | 'cursor' | 'camera' | 'audio' | 'info';
+export type PanelTab = 'background' | 'focus' | 'annotations' | 'cursor' | 'camera' | 'audio' | 'extensions' | 'info';
 
 export const WALLPAPERS: WallpaperOption[] = Array.from({ length: 23 }, (_, i) => ({
 	id: `wallpaper${i + 1}`,
 	label: `Wallpaper ${i + 1}`,
 }));
 
-const rawGradientPresets: [string, string[]][] = [
-	['Forest', ["#80dbef", "#51b2b9", "#2f8d87", "#216a57", "#134830"]],
-	['Sunset', ["#dcb2b3", "#e9c6be", "#dfad90", "#e9b89e", "#dcc2a8"]],
-	['Ocean', ["#24707e", "#3d9886", "#6ba072", "#9fbb7e", "#c0d09a"]],
-	['Lavender', ["#facac2", "#dca0aa", "#ad667d", "#7b3f62", "#461a48"]],
-	['Beige',["#d5ac9c", "#e6bfa6", "#f1d2ae", "#d0ae85", "#cebc8c"]],
-	['Midnight', ["#cbb8f3", "#9892c9", "#7664ae", "#4d417e", "#2d204b"]],
-	['Ember', ["#f8b3c9", "#f3ac9e", "#f1bf9f", "#f5d4a4", "#d4d294"]],
-	['Sky', ["#bbd2f9", "#99aed1", "#7b8aac", "#4f699c", "#3a4877"]],
-]
+/**
+ * A single gradient color stop. `pos` is a percentage (0–100) along the
+ * gradient line, matching the CSS `linear-gradient` stop syntax.
+ */
+export interface GradientStop {
+	color: string;
+	pos: number;
+}
 
-export const GRADIENT_PRESETS = rawGradientPresets.map(([label, colors]) => ({
-	label,
-	value: `linear-gradient(135deg, ${colors.map((c, i) => `${c} ${(i / (colors.length - 1)) * 100}%`).join(', ')})`,
-}))
+/** A parsed linear gradient: an angle (CSS degrees) and 2+ color stops. */
+export interface GradientSpec {
+	angle: number;
+	stops: GradientStop[];
+}
+
+/** Max stops the preview shader / export rasteriser support. */
+export const MAX_GRADIENT_STOPS = 8;
+
+/**
+ * Curated, product-grade gradient presets. Authored as full
+ * `linear-gradient(<deg>, <stop>…)` strings — the exact source of truth that
+ * the preview shader and the export rasteriser both parse, so what's shown is
+ * what's rendered. Picked for richer contrast and saturation than the old
+ * adjacent-tone ramps (which read as washed-out two-tone blends because only
+ * the first two stops were ever sampled).
+ */
+export const GRADIENT_PRESETS: { label: string; value: string }[] = [
+	{ label: 'Indigo', value: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%)' },
+	{ label: 'Sunset', value: 'linear-gradient(120deg, #ff6a00 0%, #ee0979 100%)' },
+	{ label: 'Ocean', value: 'linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%)' },
+	{ label: 'Aurora', value: 'linear-gradient(135deg, #00c9ff 0%, #92fe9d 100%)' },
+	{ label: 'Ember', value: 'linear-gradient(135deg, #f12711 0%, #f5af19 100%)' },
+	{ label: 'Mint', value: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)' },
+	{ label: 'Grape', value: 'linear-gradient(135deg, #7028e4 0%, #e5b2ca 100%)' },
+	{ label: 'Berry', value: 'linear-gradient(135deg, #c31432 0%, #240b36 100%)' },
+	{ label: 'Royal', value: 'linear-gradient(160deg, #141e30 0%, #243b55 100%)' },
+	{ label: 'Slate', value: 'linear-gradient(135deg, #232526 0%, #414345 100%)' },
+	{ label: 'Peach', value: 'linear-gradient(135deg, #ed4264 0%, #ffedbc 100%)' },
+	{ label: 'Lagoon', value: 'linear-gradient(160deg, #43c6ac 0%, #191654 100%)' },
+];
+
+/** Default gradient used when a fresh custom gradient is created. */
+export const DEFAULT_GRADIENT = GRADIENT_PRESETS[0].value;
+
+function clampNum(v: number, lo: number, hi: number): number {
+	return Math.min(hi, Math.max(lo, v));
+}
+
+/** Expand #rgb/#rgba shorthand and lowercase, so downstream parsing is uniform. */
+function normalizeHex(hex: string): string {
+	let h = hex.trim().replace(/^#/, '');
+	if (h.length === 3 || h.length === 4) {
+		h = h.split('').map((c) => c + c).join('');
+	}
+	return `#${h.toLowerCase()}`;
+}
+
+/**
+ * Parse a CSS `linear-gradient(...)` string into an angle + stops. Tolerant of
+ * a missing angle (defaults 135°) and missing stop positions (distributes them
+ * evenly). Always returns at least two stops so the builder UI and the
+ * renderers have a well-formed spec to work with.
+ */
+export function parseGradient(value: string): GradientSpec {
+	const angleMatch = value.match(/(-?\d+(?:\.\d+)?)deg/);
+	const angle = angleMatch
+		? (((parseFloat(angleMatch[1]) % 360) + 360) % 360)
+		: 135;
+
+	const stopRe = /(#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4}))(?:\s+(-?\d+(?:\.\d+)?)%)?/g;
+	const raw: { color: string; pos: number | null }[] = [];
+	let m: RegExpExecArray | null;
+	while ((m = stopRe.exec(value)) !== null) {
+		raw.push({
+			color: normalizeHex(m[1]),
+			pos: m[2] != null ? clampNum(parseFloat(m[2]), 0, 100) : null,
+		});
+	}
+
+	if (raw.length === 0) {
+		return { angle, stops: [{ color: '#6366f1', pos: 0 }, { color: '#d946ef', pos: 100 }] };
+	}
+	if (raw.length === 1) {
+		return { angle, stops: [{ color: raw[0].color, pos: 0 }, { color: raw[0].color, pos: 100 }] };
+	}
+	const n = raw.length;
+	const stops = raw.map((s, i) => ({
+		color: s.color,
+		pos: s.pos != null ? s.pos : (i / (n - 1)) * 100,
+	}));
+	return { angle, stops };
+}
+
+/** Serialize a {@link GradientSpec} back to a canonical CSS gradient string. */
+export function serializeGradient(spec: GradientSpec): string {
+	const angle = (((Math.round(spec.angle) % 360) + 360) % 360);
+	const body = [...spec.stops]
+		.sort((a, b) => a.pos - b.pos)
+		.map((s) => `${normalizeHex(s.color)} ${Math.round(clampNum(s.pos, 0, 100))}%`)
+		.join(', ');
+	return `linear-gradient(${angle}deg, ${body})`;
+}
 
 export const COLOR_PRESETS = [
 	'#eaffd0', '#95e1d3', '#ffffff', '#f5f5f5',
@@ -948,6 +1048,7 @@ export function createEditorStore() {
 		};
 		zoomRegions = [...zoomRegions, region];
 		selectedZoomRegionId = region.id;
+		log.info('focus', 'zoom_added', { id: region.id, start, end, scale });
 		return region.id;
 	}
 
@@ -1001,14 +1102,34 @@ export function createEditorStore() {
 		pushUndoState();
 		backgroundType = selection.type;
 		backgroundValue = selection.value;
+		// `value` can be a long wallpaper/gradient string — log only the type.
+		log.info('background', 'changed', { type: selection.type });
+	}
+
+	/**
+	 * Stream a background value during a continuous gesture (dragging a
+	 * gradient stop's color/position or the angle). Updates fire live so the
+	 * WebGL preview tracks the drag, but the whole gesture coalesces into a
+	 * single undo entry (mirrors the keyboard-nudge / slider pattern) instead
+	 * of spamming one push per pointer-move. Discrete actions (presets, add /
+	 * remove stop) should use {@link setBackground} for a clean undo step.
+	 */
+	function setBackgroundLive(type: BackgroundType, value: string) {
+		pushUndoStateCoalesced('background-live');
+		backgroundType = type;
+		backgroundValue = value;
+		isDirty = true;
 	}
 
 	function updateCursorSettings(updates: Partial<CursorSettings>) {
 		cursorSettings = { ...cursorSettings, ...updates };
+		// Sliders (size, smoothing) fire continuously — debounce to one line.
+		log.debounced('cursor-settings', 'cursor', 'settings_changed', { ...updates });
 	}
 
 	function updateAudioSettings(updates: Partial<AudioSettings>) {
 		audioSettings = { ...audioSettings, ...updates };
+		log.debounced('audio-settings', 'audio', 'settings_changed', { ...updates });
 	}
 
 	function updateWatermarkSettings(updates: Partial<WatermarkSettings>) {
@@ -1032,9 +1153,12 @@ export function createEditorStore() {
 		pushUndoState();
 		zoomRegions = zoomRegions.filter((z) => z.id !== id);
 		if (selectedZoomRegionId === id) selectedZoomRegionId = null;
+		log.info('focus', 'zoom_removed', { id });
 	}
 
 	function updateZoomRegion(id: string, updates: Partial<ZoomRegion>) {
+		// Drag/resize/slider edits stream in — debounce per region id.
+		log.debounced(`zoom-${id}`, 'focus', 'zoom_updated', { id, ...updates });
 		zoomRegions = zoomRegions.map((z) => {
 			if (z.id !== id) return z;
 			// First user edit on an auto region detaches it — "Clear auto
@@ -1073,10 +1197,16 @@ export function createEditorStore() {
 		};
 		annotations = [...annotations, annotation];
 		selectedAnnotationId = annotation.id;
+		log.info('annotation', 'added', { id: annotation.id, kind: kind.kind });
 		return annotation;
 	}
 
 	function updateAnnotation(id: string, updates: Partial<Annotation>) {
+		// Position/style edits stream from drags + property sliders — debounce.
+		log.debounced(`annotation-${id}`, 'annotation', 'updated', {
+			id,
+			fields: Object.keys(updates),
+		});
 		annotations = annotations.map((a) => (a.id === id ? { ...a, ...updates } : a));
 	}
 
@@ -1085,6 +1215,7 @@ export function createEditorStore() {
 		annotations = annotations.filter((a) => a.id !== id);
 		if (selectedAnnotationId === id) selectedAnnotationId = null;
 		if (hoveredAnnotationId === id) hoveredAnnotationId = null;
+		log.info('annotation', 'removed', { id });
 	}
 
 	/** Sorted view by (zIndex, insertion-order). Higher z draws later. */
@@ -1339,7 +1470,9 @@ export function createEditorStore() {
 			outputAspect,
 			lastAppliedPresetId,
 			backgroundType,
-			backgroundValue,
+			// `ext:` background ids → the pack's hydrated absolute path; built-in
+			// values (hex/gradient/`asset:<id>`) pass through unchanged.
+			backgroundValue: resolveBackgroundWireValue(backgroundValue),
 			backgroundBlur,
 			padding,
 			borderRadius,
@@ -1623,12 +1756,12 @@ export function createEditorStore() {
 		// Lane "enable" toggles — bypass the lane's effect in preview/export
 		// while keeping the underlying data intact.
 		get cutsEnabled() { return cutsEnabled; },
-		set cutsEnabled(v: boolean) { cutsEnabled = v; isDirty = true; },
+		set cutsEnabled(v: boolean) { cutsEnabled = v; isDirty = true; log.info('feature', 'toggled', { feature: 'cuts', enabled: v }); },
 		get focusEnabled() { return focusEnabled; },
-		set focusEnabled(v: boolean) { focusEnabled = v; isDirty = true; },
+		set focusEnabled(v: boolean) { focusEnabled = v; isDirty = true; log.info('feature', 'toggled', { feature: 'focus', enabled: v }); },
 
 		get autoZoomEnabled() { return autoZoomEnabled; },
-		set autoZoomEnabled(v: boolean) { autoZoomEnabled = v; isDirty = true; },
+		set autoZoomEnabled(v: boolean) { autoZoomEnabled = v; isDirty = true; log.info('feature', 'toggled', { feature: 'autoZoom', enabled: v }); },
 
 		get autoZoomApplied() { return autoZoomApplied; },
 		set autoZoomApplied(v: boolean) { autoZoomApplied = v; isDirty = true; },
@@ -1654,7 +1787,7 @@ export function createEditorStore() {
 		get hoveredAnnotationId() { return hoveredAnnotationId; },
 		set hoveredAnnotationId(v: string | null) { hoveredAnnotationId = v; },
 		get annotationsGloballyHidden() { return annotationsGloballyHidden; },
-		set annotationsGloballyHidden(v: boolean) { annotationsGloballyHidden = v; },
+		set annotationsGloballyHidden(v: boolean) { annotationsGloballyHidden = v; log.info('feature', 'toggled', { feature: 'annotations', enabled: !v }); },
 		get annotationSnapEnabled() { return annotationSnapEnabled; },
 		set annotationSnapEnabled(v: boolean) { annotationSnapEnabled = v; },
 
@@ -1712,6 +1845,7 @@ export function createEditorStore() {
 		markSaved,
 		revertToSaved,
 		setBackground,
+		setBackgroundLive,
 		updateCursorSettings,
 		updateAudioSettings,
 		updateWatermarkSettings,

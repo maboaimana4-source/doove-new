@@ -13,8 +13,11 @@
   import { fade } from "svelte/transition";
 
   import { goto } from "$app/navigation";
+  import { safeStorage } from "@doove/ui/persisted-state";
+  import { getVersion } from "@tauri-apps/api/app";
   import { listen } from "@tauri-apps/api/event";
   import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+  import { platform } from "@tauri-apps/plugin-os";
 
   let { children } = $props();
   let routeKey = $derived(page.url.pathname);
