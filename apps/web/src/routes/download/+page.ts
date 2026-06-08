@@ -4,13 +4,14 @@ import type { PageLoad } from './$types';
 export const ssr = false;
 
 export const load: PageLoad = async ({ fetch, setHeaders }) => {
-  // Cache this response in the browser/CDN for 1 hour to prevent GitHub API rate limits
+  // Cache this response in the browser/CDN for 5 minutes to prevent GitHub API rate limits
   setHeaders({
-    'Cache-Control': 'public, max-age=3600'
+    'Cache-Control': 'public, max-age=300'
   });
 
   try {
-    const response = await fetch('https://api.github.com/repos/maboaimana4-source/doove-new/releases/latest');
+    const timestamp = Date.now();
+    const response = await fetch(`https://api.github.com/repos/maboaimana4-source/doove-new/releases/latest?t=${timestamp}`);
     
     if (!response.ok) throw new Error('Failed to fetch release');
     
