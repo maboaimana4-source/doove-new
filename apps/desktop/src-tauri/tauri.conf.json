@@ -68,7 +68,7 @@
     "linux": {
       "appimage": {}
     },
-    "createUpdaterArtifacts": true,
+    "createUpdaterArtifacts": false,
     "fileAssociations": [
       {
         "ext": ["doove"],
