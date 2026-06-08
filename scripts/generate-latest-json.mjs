@@ -49,7 +49,8 @@ if (!tag || !repo) {
 }
 
 const version = tag.replace(/^v/, "");
-const sigs = readdirSync(dir).filter((f) => f.endsWith(".sig"));
+import { existsSync } from "node:fs";
+const sigs = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".sig")) : [];
 
 const pick = (predicate) => sigs.find(predicate);
 
