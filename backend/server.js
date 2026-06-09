@@ -260,7 +260,17 @@ app.post('/api/subscription/verify-key', (req, res) => {
         }
 
         if (row.is_used) {
-            return res.status(400).json({ valid: false, error: "Cette clé a déjà été activée sur une machine." });
+            const activatedTime = new Date(row.activated_at + "Z").getTime();
+            const now = Date.now();
+            const days30 = 30 * 24 * 60 * 60 * 1000;
+            
+            if (row.tier === 'lifetime') {
+                return res.status(200).json({ valid: true, success: true, email: row.email, message: "Clé à vie valide" });
+            } else if (now - activatedTime > days30) {
+                return res.status(400).json({ valid: false, error: "Abonnement expiré. Veuillez renouveler votre abonnement." });
+            } else {
+                return res.status(200).json({ valid: true, success: true, email: row.email, message: "Abonnement actif" });
+            }
         }
 
         db.run("UPDATE licenses SET is_used = 1, activated_at = CURRENT_TIMESTAMP WHERE id = ?", [row.id], (updateErr) => {

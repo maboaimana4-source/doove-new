@@ -18,6 +18,7 @@
   import { listen } from "@tauri-apps/api/event";
   import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
   import { platform } from "@tauri-apps/plugin-os";
+  import { revalidateOnBoot } from "$lib/licensing.svelte";
 
   let { children } = $props();
   let routeKey = $derived(page.url.pathname);
@@ -26,6 +27,7 @@
   // the user already landed on the changelog page), and kick off the
   // background update check. Both render as non-blocking bottom-right cards.
   onMount(async () => {
+    revalidateOnBoot();
     // Basic telemetry ping
     try {
       let machineId = safeStorage.get("doove-machine-id", "");

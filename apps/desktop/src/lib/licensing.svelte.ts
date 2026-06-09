@@ -32,18 +32,29 @@ export async function verifyLicense(key: string): Promise<boolean> {
             body: JSON.stringify({ key }),
         });
         const data = await response.json();
-        if (data.success) {
+        if (data.success || data.valid) {
             licenseStore.current = {
                 isPro: true,
                 key: key,
                 email: data.email || null,
             };
             return true;
+        } else {
+             // If validation fails, downgrade locally
+             if (licenseStore.current.key === key) {
+                 licenseStore.current = { isPro: false, key: null, email: null };
+             }
         }
     } catch (e) {
         console.error("License verification failed", e);
     }
     return false;
+}
+
+export async function revalidateOnBoot() {
+    if (licenseStore.current.isPro && licenseStore.current.key) {
+        await verifyLicense(licenseStore.current.key);
+    }
 }
 
 export function canRecord(): { allowed: boolean; reason?: string } {
