@@ -1,33 +1,27 @@
 <script lang="ts">
-  // Logo component configuration
-  import { onMount } from "svelte";
-  import { safeStorage } from "@doove/ui/persisted-state";
-  type Theme = "light" | "dark" | "system";
-
-  let currentTheme = $state<Theme>("system");
-  onMount(() => {
-    // Read-only — mode-watcher owns this key.
-    currentTheme = safeStorage.get<Theme>("mode-watcher-mode", currentTheme);
-  });
-
+  import type { SVGAttributes } from "svelte/elements";
+  
   let {
-    color = currentTheme === "light" ? "white" : "black",
-    fill = currentTheme === "light" ? "black" : "white",
     size = "512",
     ...rest
-  } = $props();
+  }: { size?: string | number } & SVGAttributes<SVGSVGElement> = $props();
 </script>
 
 <svg
-  viewBox="0 0 512 512"
+  viewBox="0 0 1024 1024"
   xmlns="http://www.w3.org/2000/svg"
-  {...rest}
-  {fill}
   width={size}
   height={size}
+  fill="none"
+  {...rest}
 >
-  <rect width="512" height="512" rx="256" {fill} />
-  <rect x="230" y="166" width="60" height="180" rx="30" fill={color} />
-  <rect x="111" y="166" width="60" height="180" rx="30" fill={color} />
-  <rect x="349" y="166" width="60" height="180" rx="30" fill={color} />
+  <rect width="1024" height="1024" rx="220" fill="url(#paint0_linear_logo)"/>
+  <path d="M300 300V724H512C629.081 724 724 629.081 724 512C724 394.919 629.081 300 512 300H300ZM412 412H512C567.228 412 612 456.772 612 512C612 567.228 567.228 612 512 612H412V412Z" fill="white"/>
+  <circle cx="460" cy="512" r="50" fill="white" fill-opacity="0.8"/>
+  <defs>
+    <linearGradient id="paint0_linear_logo" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7C3AED"/>
+      <stop offset="1" stop-color="#3B82F6"/>
+    </linearGradient>
+  </defs>
 </svg>
