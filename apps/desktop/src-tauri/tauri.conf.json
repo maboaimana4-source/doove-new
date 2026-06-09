@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "doove",
-  "version": "1.3.4",
+  "version": "1.3.5",
   "identifier": "com.nexonauts.doove",
   "build": {
     "frontendDist": "../build",
@@ -27,7 +27,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost https: data: blob:; media-src 'self' asset: http://asset.localhost blob: data:; connect-src 'self' ipc: http://ipc.localhost asset: http://asset.localhost https://*.i.posthog.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval';",
+      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost https: data: blob:; media-src 'self' asset: http://asset.localhost blob: data:; connect-src 'self' ipc: http://ipc.localhost asset: http://asset.localhost https://*.i.posthog.com https://doove.imara.cloud; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval';",
       "assetProtocol": {
         "enable": true,
         "scope": [
